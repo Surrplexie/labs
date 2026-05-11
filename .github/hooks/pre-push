@@ -1,0 +1,51 @@
+#!/bin/sh
+# .github/hooks/pre-push
+#
+# Local git pre-push hook.  Runs validate.ps1 and redact-check.ps1 before
+# every push so failures are caught before they reach GitHub.
+#
+# Install once with:
+#   Windows  ->  powershell -ExecutionPolicy Bypass -File .\30_scripts\install-hooks.ps1
+#   Linux    ->  bash ./30_scripts/install-hooks.sh
+#
+# To skip in an emergency:
+#   git push --no-verify
+#
+# Requirements:
+#   Windows : PowerShell 5.1+ (built in)
+#   Linux   : pwsh (PowerShell Core)
+
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+
+echo ""
+echo "=== pre-push: running repo integrity checks ==="
+echo ""
+
+# Detect PowerShell binary
+if command -v pwsh >/dev/null 2>&1; then
+    PS="pwsh"
+elif command -v powershell >/dev/null 2>&1; then
+    PS="powershell"
+else
+    echo "WARN: PowerShell not found -- skipping pre-push checks."
+    echo "      Install pwsh or run validate.ps1 manually before pushing."
+    exit 0
+fi
+
+# Run validate
+$PS -ExecutionPolicy Bypass -File "$REPO_ROOT/30_scripts/validate.ps1" -Root "$REPO_ROOT"
+VALIDATE_EXIT=$?
+
+# Run redact-check
+$PS -ExecutionPolicy Bypass -File "$REPO_ROOT/30_scripts/redact-check.ps1" -Root "$REPO_ROOT"
+REDACT_EXIT=$?
+
+echo ""
+if [ $VALIDATE_EXIT -ne 0 ] || [ $REDACT_EXIT -ne 0 ]; then
+    echo "pre-push BLOCKED: fix the issues above, then push again."
+    echo "To bypass (emergency only): git push --no-verify"
+    exit 1
+fi
+
+echo "pre-push checks passed."
+exit 0

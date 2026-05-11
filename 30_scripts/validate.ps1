@@ -6,16 +6,17 @@
 .DESCRIPTION
     Checks structural consistency of the repo against samples_tracker.csv.
     Runs the following checks:
-      1. CSV schema              - required columns present.
-      2. Per-sample phase files  - all four phase .md files exist for non-empty slots.
-      3. SHA256 populated        - any non-empty slot must have a hash on record.
-      4. Content depth           - warns if a phase file looks like an unfilled skeleton (< 15 lines).
-      5. Frontmatter presence    - warns if 03_findings/sample_XX.md has no YAML frontmatter block.
-      6. SHA256 cross-check      - tracker hash vs frontmatter hash in findings file must match.
-      7. IOC CSV schema          - required columns present; all sample_ids known to tracker.
-      8. Orphan files            - phase .md files with no matching tracker row.
-      9. Forbidden extension scan- hard check for executables/archives that should never be on host.
-     10. Screenshot folder       - warns if non-empty slot has no 50_screenshots/sample_XX/ folder.
+      1.  CSV schema              - required columns present.
+      2.  Per-sample phase files  - all four phase .md files exist for non-empty slots.
+      3.  SHA256 populated        - any non-empty slot must have a hash on record.
+      4.  Content depth           - warns if a phase file looks like an unfilled skeleton (< 15 lines).
+      5.  Frontmatter presence    - warns if 03_findings/sample_XX.md has no YAML frontmatter block.
+      6.  SHA256 cross-check      - tracker hash vs frontmatter hash in findings file must match.
+      7.  IOC CSV schema          - required columns present; all sample_ids known to tracker.
+      8.  Orphan files            - phase .md files with no matching tracker row.
+      9.  Forbidden extension scan- hard check for executables/archives that should never be on host.
+     10.  Screenshot folder       - warns if non-empty slot has no 50_screenshots/sample_XX/ folder.
+     11.  Schema version          - warns if 03_findings/sample_XX.md is missing schema_version field.
 
     Exit code 0 = all checks passed (WARNs allowed).
     Exit code 1 = one or more FAIL checks.
@@ -237,7 +238,8 @@ $FORBIDDEN_EXTS = @(
 )
 
 $allFiles = Get-ChildItem -Path $Root -Recurse -File -ErrorAction SilentlyContinue |
-    Where-Object { $_.FullName -notmatch '\\.git[/\\]' }
+    Where-Object { $_.FullName -notmatch '\\.git[/\\]' } |
+    Where-Object { $_.FullName -notmatch '[/\\]dist[/\\]' }
 
 $forbidden = $allFiles | Where-Object { $FORBIDDEN_EXTS -contains $_.Extension.ToLower() }
 
@@ -247,6 +249,36 @@ if ($forbidden.Count -gt 0) {
     }
 } else {
     Write-Pass "No forbidden extensions found in working tree"
+}
+
+# ---------------------------------------------------------------------------
+# CHECK 11: Schema version presence in findings files
+# ---------------------------------------------------------------------------
+Write-Section "11. Schema version in findings files"
+
+$CURRENT_SCHEMA_VERSION = 1
+$schemaIssues = $false
+
+foreach ($row in $nonEmptyRows) {
+    $id           = $row.sample_id.Trim()
+    $findingsPath = Join-Path $Root "03_findings\$id.md"
+    if (-not (Test-Path $findingsPath)) { continue }
+
+    $raw = Get-Content $findingsPath -Raw -Encoding UTF8
+    $sv  = Get-FrontmatterValue -Content $raw -Key 'schema_version'
+
+    if ($null -eq $sv -or $sv -eq '') {
+        Write-Warn "$id : 03_findings\$id.md has no schema_version field (add schema_version: $CURRENT_SCHEMA_VERSION)"
+        $schemaIssues = $true
+    } elseif ($sv -ne "$CURRENT_SCHEMA_VERSION") {
+        Write-Warn "$id : schema_version is '$sv', current is $CURRENT_SCHEMA_VERSION (migration may be needed)"
+        $schemaIssues = $true
+    } else {
+        Write-Pass "$id : schema_version: $sv"
+    }
+}
+if (-not $schemaIssues -and $nonEmptyRows.Count -gt 0) {
+    Write-Pass "All active findings files carry schema_version: $CURRENT_SCHEMA_VERSION"
 }
 
 # ---------------------------------------------------------------------------

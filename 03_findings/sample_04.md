@@ -1,4 +1,5 @@
 ﻿---
+schema_version: 1
 sample_id: sample_04
 sha256: ""
 phase: findings
@@ -16,6 +17,7 @@ procmon_run: false
 dynamic_complete: false
 ---
 
+schema_version: 1
 # sample_04 -- findings (portfolio slice)
 
 **SHA256:** <!-- fill --> | **Confidence:** <!-- low / medium / medium-high / high -->

@@ -209,8 +209,18 @@ if (-not $SkipJson) {
     $distDir = Join-Path $Root 'dist'
     if (-not (Test-Path $distDir)) { New-Item -ItemType Directory -Path $distDir | Out-Null }
     $jsonPath = Join-Path $distDir 'summary.json'
-    $records | ConvertTo-Json -Depth 6 | Set-Content -Path $jsonPath -Encoding UTF8
-    Write-Host "[export] Wrote $jsonPath" -ForegroundColor Green
+
+    # Versioned envelope -- schema_version matches 30_scripts/schema/summary.schema.json
+    $envelope = [ordered]@{
+        schema_version = 1
+        generated_at   = (Get-Date -Format 'yyyy-MM-ddTHH:mm:ssZ')
+        record_count   = $records.Count
+        active_count   = $activeRecs.Count
+        reserve_count  = $reserveRecs.Count
+        records        = @($records)
+    }
+    $envelope | ConvertTo-Json -Depth 6 | Set-Content -Path $jsonPath -Encoding UTF8
+    Write-Host "[export] Wrote $jsonPath (schema_version: 1)" -ForegroundColor Green
 }
 
 # ---------------------------------------------------------------------------

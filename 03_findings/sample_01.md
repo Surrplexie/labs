@@ -1,4 +1,5 @@
 ---
+schema_version: 1
 sample_id: sample_01
 sha256: ffd448f1e3038c6c324570ab12dbf65ddbef471f0ababfb9f2a3bb47eead5bd7
 phase: findings

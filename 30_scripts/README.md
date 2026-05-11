@@ -13,6 +13,8 @@ All scripts require PowerShell 5.1+ and run from anywhere (they resolve the repo
 |--------|---------|-------------|
 | `workflow_gui.py` | GUI: autofill phase files from pasted metadata | Optional; alternative or complement to `new_sample.ps1` |
 | `new_sample.ps1` | Scaffold a new sample slot | Before starting a new sample |
+| `install-hooks.ps1` | Install pre-push git hook (Windows) | Once, after cloning |
+| `install-hooks.sh` | Install pre-push git hook (Linux) | Once, after cloning |
 | `close_sample.ps1` | Advance slot status, print close checklist | After each analysis phase |
 | `validate.ps1` | Structural integrity check | Before any commit |
 | `export-summary.ps1` | Regenerate `INDEX.md` + `dist/summary.json` | After closing a sample or editing frontmatter |
@@ -190,9 +192,61 @@ python -c "from PIL import Image; import pillow_heif; pillow_heif.register_heif_
 
 ---
 
+## install-hooks.ps1 / install-hooks.sh
+
+Installs `.github/hooks/pre-push` into `.git/hooks/pre-push` so that `validate.ps1`
+and `redact-check.ps1` run automatically before every `git push`.
+
+**Run once after cloning:**
+
+```powershell
+# Windows
+powershell -ExecutionPolicy Bypass -File .\30_scripts\install-hooks.ps1
+
+# Uninstall
+powershell -ExecutionPolicy Bypass -File .\30_scripts\install-hooks.ps1 -Uninstall
+```
+
+```bash
+# Linux
+bash ./30_scripts/install-hooks.sh
+
+# Uninstall
+bash ./30_scripts/install-hooks.sh --uninstall
+```
+
+**Emergency bypass:** `git push --no-verify`
+
+The hook source lives in `.github/hooks/pre-push` (POSIX shell) and detects both
+`powershell` (Windows built-in) and `pwsh` (PowerShell Core on Linux) automatically.
+
+---
+
+## schema/
+
+Versioned JSON Schema contracts for two machine-readable formats:
+
+| File | Purpose |
+|------|---------|
+| `schema/frontmatter.schema.json` | Required fields, types, and patterns for `03_findings/sample_XX.md` YAML frontmatter |
+| `schema/summary.schema.json` | Versioned envelope and record structure for `dist/summary.json` |
+| `schema/CHANGELOG.md` | History of changes and migration guide |
+
+**Current version: schema_version 1.**
+
+Every active findings file must include `schema_version: 1` in its YAML frontmatter.
+`validate.ps1` check 11 enforces this. `export-summary.ps1` wraps `dist/summary.json`
+in a `schema_version: 1` envelope. See `schema/CHANGELOG.md` for the upgrade process
+when fields change.
+
+---
+
 ## Recommended commit workflow
 
 ```powershell
+# 0. One-time hook install (run once after clone)
+powershell -ExecutionPolicy Bypass -File .\30_scripts\install-hooks.ps1
+
 # 1. Create and analyze a sample
 powershell -ExecutionPolicy Bypass -File .\30_scripts\new_sample.ps1 -NextNumber 7
 
@@ -207,7 +261,8 @@ powershell -ExecutionPolicy Bypass -File .\30_scripts\redact-check.ps1 -SampleId
 # 4. Close the sample and regenerate index
 powershell -ExecutionPolicy Bypass -File .\30_scripts\close_sample.ps1 -SampleId sample_07 -Status done -RunValidate -RunExport
 
-# 5. Commit
+# 5. Commit (pre-push hook runs validate + redact-check automatically on push)
 git add -A
 git commit -m "add sample_07: <one-line description>"
+git push
 ```

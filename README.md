@@ -152,6 +152,41 @@ All scripts require **PowerShell 5.1+** and resolve the repo root automatically.
 
 See [`30_scripts/README.md`](./30_scripts/README.md) for full documentation and examples.
 
+### Continuous integrity (CI)
+
+Every push and pull request runs `.github/workflows/integrity.yml` on GitHub Actions, which executes three checks automatically:
+
+1. **`validate.ps1`** — 11 structural checks (CSV schema, phase files, SHA256, frontmatter, orphans, forbidden extensions, schema version, and more)
+2. **`redact-check.ps1`** — scans for non-VM paths, email addresses, and internal hostnames that should not be public
+3. **Schema version inline check** — confirms every active findings file carries `schema_version: 1`
+
+The job fails and blocks merge on any FAIL-level finding.
+
+**Optional local pre-push hook** — catches the same issues before the push ever leaves your machine:
+
+```powershell
+# Windows (installs .github/hooks/pre-push -> .git/hooks/pre-push)
+powershell -ExecutionPolicy Bypass -File .\30_scripts\install-hooks.ps1
+```
+```bash
+# Linux
+bash ./30_scripts/install-hooks.sh
+```
+
+Skip in an emergency: `git push --no-verify`
+
+### Machine-readable schema contract
+
+All `03_findings/sample_XX.md` YAML frontmatter and the `dist/summary.json` export are governed by versioned JSON Schemas:
+
+| File | What it validates |
+|------|-------------------|
+| [`30_scripts/schema/frontmatter.schema.json`](./30_scripts/schema/frontmatter.schema.json) | Required fields, types, and patterns for findings frontmatter |
+| [`30_scripts/schema/summary.schema.json`](./30_scripts/schema/summary.schema.json) | Versioned envelope and record structure for `dist/summary.json` |
+| [`30_scripts/schema/CHANGELOG.md`](./30_scripts/schema/CHANGELOG.md) | History of breaking/non-breaking changes and migration guide |
+
+Current version: **schema_version: 1**. Every active findings file must include this field. `validate.ps1` check 11 enforces it. `export-summary.ps1` writes a `schema_version: 1` envelope into `dist/summary.json`.
+
 ### Script overview
 
 | Script | One-line purpose |

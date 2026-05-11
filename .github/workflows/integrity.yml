@@ -1,0 +1,82 @@
+name: Repo Integrity
+
+# Runs on every push and pull request to catch structural issues,
+# forbidden extensions, and PII leaks before they are merged/public.
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: ["**"]
+  workflow_dispatch:   # manual trigger from Actions tab
+
+jobs:
+  integrity:
+    name: Validate + Redact Check
+    runs-on: windows-latest   # keeps path behaviour identical to local scripts
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # full history; validate needs all tracked files
+
+      # -----------------------------------------------------------------------
+      # 1. Structural integrity - validate.ps1
+      #    Runs all 10+ checks; fails the job on any FAIL-level finding.
+      #    -FailOnWarn is intentionally NOT set here so WARNs (e.g. thin
+      #    skeleton files) don't block draft commits.
+      # -----------------------------------------------------------------------
+      - name: Structural integrity (validate.ps1)
+        shell: pwsh
+        run: |
+          $result = & powershell -ExecutionPolicy Bypass `
+            -File "${{ github.workspace }}\30_scripts\validate.ps1" `
+            -Root "${{ github.workspace }}"
+          Write-Host $result
+          exit $LASTEXITCODE
+
+      # -----------------------------------------------------------------------
+      # 2. Redaction check - redact-check.ps1
+      #    Scans .md / .csv / .txt for non-VM user paths, email addresses,
+      #    and internal hostnames.  Any FAIL-level hit blocks the build.
+      # -----------------------------------------------------------------------
+      - name: Redaction check (redact-check.ps1)
+        shell: pwsh
+        run: |
+          $result = & powershell -ExecutionPolicy Bypass `
+            -File "${{ github.workspace }}\30_scripts\redact-check.ps1" `
+            -Root "${{ github.workspace }}"
+          Write-Host $result
+          exit $LASTEXITCODE
+
+      # -----------------------------------------------------------------------
+      # 3. Schema version presence check
+      #    Verifies every active findings file carries schema_version: 1.
+      #    Implemented inline so it can evolve independently of validate.ps1.
+      # -----------------------------------------------------------------------
+      - name: Schema version check
+        shell: pwsh
+        run: |
+          $root      = "${{ github.workspace }}"
+          $tracker   = Import-Csv "$root\samples_tracker.csv"
+          $active    = $tracker | Where-Object { $_.status.Trim().ToLower() -ne 'empty' }
+          $missing   = @()
+
+          foreach ($row in $active) {
+            $id   = $row.sample_id.Trim()
+            $path = "$root\03_findings\$id.md"
+            if (-not (Test-Path $path)) { continue }
+            $raw  = Get-Content $path -Raw -Encoding UTF8
+            if ($raw -notmatch '(?m)^schema_version\s*:\s*\d+') {
+              $missing += $id
+            }
+          }
+
+          if ($missing.Count -gt 0) {
+            Write-Host "FAIL: schema_version missing in findings files:" -ForegroundColor Red
+            $missing | ForEach-Object { Write-Host "  $_" }
+            exit 1
+          } else {
+            Write-Host "PASS: schema_version present in all $($active.Count) active findings file(s)." -ForegroundColor Green
+            exit 0
+          }
