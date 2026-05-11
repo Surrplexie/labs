@@ -1,0 +1,15 @@
+sample_01 — screenshots (host)
+
+ originals (phone / HEIC): IMG_6038 … IMG_6042 — convert to PNG for editors with:
+   pip install pillow pillow-heif
+   python -c "from PIL import Image; import pillow_heif; pillow_heif.register_heif_opener(); ..."
+   (PNG copies IMG_6038.png … IMG_6042.png were generated in this workspace.)
+
+ Map:
+   IMG_6038 — CFF Explorer VIII (General Info + pijawoBridge version)
+   IMG_6039 — HxD (MZ/PE + .text .rdata .data .ndata .rsrc)
+   IMG_6040 — PEStudio 9.61 (entropy 8.0, Nullsoft.NSIS.exehead, overlay unknown)
+   IMG_6041 — DIE 3.21 (NSIS 3.04 zlib solid, overlay NSIS data, heur packer)
+   IMG_6042 — Post-execution: fake error dialogs (see 02_dynamic/sample_01.md)
+
+ Portfolio: prefer PNG — HEIC may not render in Git / Cursor / some viewers.
