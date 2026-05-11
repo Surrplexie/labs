@@ -1,6 +1,17 @@
 # 01_static
 
-**Static triage notes — one file per sample, no execution required.**
+**Second phase folder — meaning depends on engagement kind.**
+
+| Kind | What this folder holds |
+|------|------------------------|
+| `file` | Static triage notes (DIE / PEStudio / CFF Explorer / HxD) |
+| `ctf` | Recon and enumeration notes (nmap, gobuster, service details) |
+| `lab` | Step log (procedure, commands, expected vs actual output) |
+| `hunt` | Data collection (queries, raw findings, event IDs) |
+
+---
+
+**For `file` engagements:** Static triage notes — one file per sample, no execution required.
 
 Each `sample_XX.md` in this folder documents everything you can learn about a file
 *without running it*: structure, entropy, packer, imports, strings, resources, and any

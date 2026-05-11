@@ -1,15 +1,38 @@
 # Workflow Guide
 
-**A complete, step-by-step walkthrough for taking any sample from zero to a committed, documented analysis.**
+**Step-by-step workflows for every engagement kind in this logbook.**
 
-This document is written for someone who is new to this repo and wants to understand
-exactly what happens at each stage, why it happens in that order, and what gets written
-where. Follow this from top to bottom for your first sample. After a few iterations
-it becomes second nature.
+This repository supports four engagement tracks. Pick the one that matches your work,
+follow it from top to bottom, and commit at the end. All tracks share the same slot
+system, tracker, validation, and export pipeline.
+
+| Track | When to use |
+|-------|------------|
+| [Track A: File analysis](#track-a-file-analysis) | A malware sample, suspicious artifact, or binary from MalwareBazaar |
+| [Track B: CTF](#track-b-ctf-challenge) | A HackTheBox/TryHackMe/CTF challenge |
+| [Track C: Lab](#track-c-training-lab) | A guided course lab, module, or exercise |
+| [Track D: Threat hunt](#track-d-threat-hunt) | A hypothesis-driven detection or log analysis exercise |
+
+**Not sure which track?**
+```
+Has a single hash-identified artifact?   -> Track A (file)
+Solving a CTF/HtB/THM challenge?         -> Track B (ctf)
+Working through a course module?         -> Track C (lab)
+Hunting in logs/SIEM with a hypothesis?  -> Track D (hunt)
+```
+
+All tracks use `new_engagement.ps1` to scaffold, `close_sample.ps1` to advance, and
+`validate.ps1` + `export-summary.ps1` to finalize.
 
 ---
 
-## Table of Contents
+# Track A: File Analysis
+
+**A complete, step-by-step walkthrough for taking a malware sample from zero to a committed analysis.**
+
+---
+
+## Table of Contents (Track A)
 
 1. [Prerequisites — set up your environment once](#1-prerequisites--set-up-your-environment-once)
 2. [Find and select a sample](#2-find-and-select-a-sample)
@@ -1091,3 +1114,241 @@ START
 ---
 
 *See also: [`README.md`](./README.md) — repo overview | [`20_notes/tooling-reference.md`](./20_notes/tooling-reference.md) — tool signal reference | [`30_scripts/README.md`](./30_scripts/README.md) — script documentation*
+
+---
+
+# Track B: CTF Challenge
+
+**Steps for documenting a HackTheBox, TryHackMe, PicoCTF, or any other CTF/challenge.**
+
+## Phase map (CTF)
+
+| Phase folder | What you fill |
+|---|---|
+| `00_original/` | Challenge brief: platform, category, difficulty, description, target info |
+| `01_static/` | Recon and enumeration: nmap, gobuster, service versions, interesting finds |
+| `02_dynamic/` | Solve attempt: approach log, commands, exploits tried, pivots, flag capture |
+| `03_findings/` | Writeup: methodology, key steps, skills, public-safe blurb |
+
+## Step 1: Scaffold
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\30_scripts\new_engagement.ps1 `
+    -NextNumber 7 -Kind ctf -Platform "HackTheBox" -Title "Lame"
+```
+
+Opens four files in `00_original/`, `01_static/`, `02_dynamic/`, `03_findings/` and a screenshots folder.
+
+## Step 2: Fill the challenge brief (00_original)
+
+Open `00_original/sample_07.md` and fill:
+- Platform, category, difficulty, points
+- Challenge description (paraphrase — no raw flags)
+- Target IP/URL or given files
+- Initial attack surface notes
+
+Do NOT include raw flag values anywhere in the repo. Use a placeholder
+(`[FLAG REDACTED -- challenge active]`) until the challenge is retired.
+
+## Step 3: Recon and enumeration (01_static)
+
+Open `01_static/sample_07.md` and log:
+- Port scan results (nmap command + output summary)
+- Service versions
+- Web directories (gobuster/feroxbuster)
+- Credentials, version strings, or misconfigurations found
+
+Take screenshots of interesting tool output and save to `50_screenshots/sample_07/`.
+
+## Step 4: Attempt the solve (02_dynamic)
+
+Open `02_dynamic/sample_07.md` and log:
+- Every technique attempted (including rabbit holes — they are useful documentation)
+- Exact commands or payloads used
+- What worked and why
+- Flag capture note (redacted if challenge still active)
+
+Advance status:
+```powershell
+powershell -ExecutionPolicy Bypass -File .\30_scripts\close_sample.ps1 `
+    -SampleId sample_07 -Status solved
+```
+
+## Step 5: Write the writeup (03_findings)
+
+Open `03_findings/sample_07.md` and fill the YAML frontmatter:
+- `solved: true`
+- `public_writeup_safe: true` (only once the challenge is retired / permitted)
+- `category`, `difficulty`, `platform`
+- `skills` list (what you actually practised)
+- `tags` list
+
+Write the methodology narrative. Then add the public-safe portfolio blurb.
+
+## Step 6: Evidence hygiene and close
+
+```powershell
+# Strip EXIF from screenshots
+powershell -ExecutionPolicy Bypass -File .\30_scripts\strip-exif.ps1 -SampleId sample_07
+
+# Redaction check -- catches raw flags if any slipped in
+powershell -ExecutionPolicy Bypass -File .\30_scripts\redact-check.ps1
+
+# Close, validate, and regenerate index
+powershell -ExecutionPolicy Bypass -File .\30_scripts\close_sample.ps1 `
+    -SampleId sample_07 -Status writeup_done -RunValidate -RunExport
+```
+
+Commit.
+
+---
+
+# Track C: Training Lab
+
+**Steps for documenting a TryHackMe, SANS, TCM, or any other guided course lab.**
+
+## Phase map (lab)
+
+| Phase folder | What you fill |
+|---|---|
+| `00_original/` | Lab brief: course, module, learning objectives, environment, prerequisites |
+| `01_static/` | Step log: numbered steps, commands, expected vs actual output |
+| `02_dynamic/` | Results: objectives completion table, errors encountered, proof/output |
+| `03_findings/` | Reflection: key takeaways, skills demonstrated, public-safe blurb |
+
+## Step 1: Scaffold
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\30_scripts\new_engagement.ps1 `
+    -NextNumber 8 -Kind lab -Platform "TryHackMe" -Title "Introductory Researching"
+```
+
+## Step 2: Fill the lab brief (00_original)
+
+Open `00_original/sample_08.md` and fill:
+- Course and module name
+- Learning objectives (copy from the lab page)
+- Environment: VM name only — **no IPs, no passwords, no VPN keys**
+- Prerequisites and resources
+
+## Step 3: Log your steps (01_static)
+
+Open `01_static/sample_08.md` and document each step:
+- Step number, action, command used, expected output, actual output
+- Notes on what was confusing, what you looked up, questions raised
+
+This is your personal procedure log. Be detailed — it is the most useful part when reviewing later.
+
+## Step 4: Record results (02_dynamic)
+
+Open `02_dynamic/sample_08.md` and mark:
+- Which objectives were met (checkboxes)
+- Errors and how you resolved them
+- Proof of completion (output snippets, screenshot references — no credentials)
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\30_scripts\close_sample.ps1 `
+    -SampleId sample_08 -Status objectives_met
+```
+
+## Step 5: Reflect (03_findings)
+
+Open `03_findings/sample_08.md` and fill:
+- YAML: `objectives_met: true`, `skills` list, `outcome: success`
+- Key takeaways: what was new or reinforced
+- Skills demonstrated: specific and concrete (useful for resume)
+- Public-safe portfolio blurb
+
+## Step 6: Close
+
+```powershell
+# Redaction check -- no lab credentials or IPs in committed files
+powershell -ExecutionPolicy Bypass -File .\30_scripts\redact-check.ps1
+
+powershell -ExecutionPolicy Bypass -File .\30_scripts\close_sample.ps1 `
+    -SampleId sample_08 -Status reviewed -RunValidate -RunExport
+```
+
+Commit.
+
+---
+
+# Track D: Threat Hunt
+
+**Steps for documenting a hypothesis-driven detection or log analysis exercise.**
+
+## Phase map (hunt)
+
+| Phase folder | What you fill |
+|---|---|
+| `00_original/` | Scope: hypothesis, data sources, tools, time box, out of scope |
+| `01_static/` | Data collection: queries run, raw findings, event IDs referenced |
+| `02_dynamic/` | Analysis: timeline, patterns, correlation, false positives, IOC candidates |
+| `03_findings/` | Outcome: detections found, confidence, recommendations |
+
+## Step 1: Scaffold
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\30_scripts\new_engagement.ps1 `
+    -NextNumber 9 -Kind hunt -Title "Lateral movement via scheduled tasks"
+```
+
+## Step 2: Define the scope (00_original)
+
+Open `00_original/sample_09.md` and fill:
+- Hypothesis: one clear, testable statement
+- Data sources: which logs, which tool (SIEM, Splunk, Elastic, raw logs)
+- Time box: how long you plan to spend
+- Out of scope: what this hunt deliberately excludes
+
+**A good hypothesis:** "An attacker used scheduled tasks (`schtasks.exe`) to establish
+persistence after initial access on Windows endpoints between 2026-04-01 and 2026-05-11."
+
+## Step 3: Collect data (01_static)
+
+Open `01_static/sample_09.md` and log:
+- Each query you ran and its result count
+- Relevant event IDs (4698, 4702, Sysmon 1, etc.)
+- Raw findings — sanitised of real user accounts and internal hostnames before commit
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\30_scripts\close_sample.ps1 `
+    -SampleId sample_09 -Status collecting
+```
+
+## Step 4: Analyse (02_dynamic)
+
+Open `02_dynamic/sample_09.md` and build:
+- Timeline from collected events
+- Pattern analysis: recurring process chains, rare parent-child relationships
+- False positives with reasoning
+- IOC candidates: specific hashes, paths, command lines, IPs
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\30_scripts\close_sample.ps1 `
+    -SampleId sample_09 -Status analyzing
+```
+
+## Step 5: Write the outcome (03_findings)
+
+Open `03_findings/sample_09.md` and fill:
+- YAML: `detections_found`, `outcome`, `confidence`, `hypothesis`
+- Confirmed detections table
+- Confidence reasoning (data quality, coverage gaps)
+- Recommendations: alert rule, follow-on hunt, SIEM query to productionise
+
+## Step 6: Close
+
+```powershell
+# Redaction check -- no internal hostnames or user accounts
+powershell -ExecutionPolicy Bypass -File .\30_scripts\redact-check.ps1
+
+powershell -ExecutionPolicy Bypass -File .\30_scripts\close_sample.ps1 `
+    -SampleId sample_09 -Status closed -RunValidate -RunExport
+```
+
+Commit.
+
+---
+
+*See also: [`ENGAGEMENTS.md`](./ENGAGEMENTS.md) — engagement kinds reference | [`README.md`](./README.md) — repo overview | [`30_scripts/README.md`](./30_scripts/README.md) — script documentation*

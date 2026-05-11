@@ -48,22 +48,39 @@ It is **not** intended for production deployment, operational use, or redistribu
 
 ---
 
+## Engagement Kinds
+
+This logbook is not file-analysis-only. Every engagement uses the same slot system and pipeline.
+
+| Kind | What it is | Typical output |
+|------|-----------|----------------|
+| `file` | Malware / suspicious artifact triage | Static + dynamic analysis, IOCs, verdict |
+| `ctf` | HackTheBox / TryHackMe / CTF challenge | Writeup, methodology, skills list |
+| `lab` | Guided course / training lab / module | Step log, objectives met, reflection |
+| `hunt` | Hypothesis-driven detection / log analysis | Findings, queries, outcome, detections |
+
+All kinds share the same four phase folders (`00_original` → `03_findings`), tracker, `validate.ps1`, and `INDEX.md` output. The `engagement_kind` field in the tracker and frontmatter controls templates, checklists, and validation rules.
+
+See [`ENGAGEMENTS.md`](./ENGAGEMENTS.md) for the complete kind reference and [`WORKFLOW.md`](./WORKFLOW.md) for per-kind step-by-step workflows.
+
+---
+
 ## Quick Navigation
 
 | I want to... | Go to |
 |---|---|
-| See all samples at a glance | [`INDEX.md`](./INDEX.md) |
-| Find samples by tag or MITRE technique | [`INDEX.md`](./INDEX.md) sections "By Tag" / "By MITRE" |
-| Read a specific sample's findings | `03_findings/sample_XX.md` |
+| See all engagements at a glance | [`INDEX.md`](./INDEX.md) |
+| Find by tag, MITRE technique, or kind | [`INDEX.md`](./INDEX.md) cross-reference sections |
+| Read a specific engagement's findings | `03_findings/sample_XX.md` |
+| Understand how all engagement kinds work | [`ENGAGEMENTS.md`](./ENGAGEMENTS.md) |
 | See which ATT&CK techniques are covered | [`20_notes/MITRE-coverage.md`](./20_notes/MITRE-coverage.md) |
-| Understand NSIS-packaged malware patterns | [`20_notes/case-series/NSIS-installers.md`](./20_notes/case-series/NSIS-installers.md) |
 | Learn what each tool signal means | [`20_notes/tooling-reference.md`](./20_notes/tooling-reference.md) |
 | Use or understand the automation scripts | [`30_scripts/README.md`](./30_scripts/README.md) |
 | Access raw IOC data | [`40_iocs/indicators.csv`](./40_iocs/indicators.csv) |
-| Walk through the full workflow step by step | [`WORKFLOW.md`](./WORKFLOW.md) |
-| Use the GUI to fill phase files automatically | [`30_scripts/workflow_gui.py`](./30_scripts/workflow_gui.py) |
-| Step-by-step GUI usage (Windows and Linux) and disclaimers | [`30_scripts/WORKFLOW-GUI.md`](./30_scripts/WORKFLOW-GUI.md) |
-| Verify a downloaded release binary (checksum steps) | [`RELEASE-VERIFICATION.md`](./RELEASE-VERIFICATION.md) |
+| Walk through any workflow track step by step | [`WORKFLOW.md`](./WORKFLOW.md) |
+| Use the GUI to fill engagement files | [`30_scripts/workflow_gui.py`](./30_scripts/workflow_gui.py) |
+| Step-by-step GUI usage and disclaimers | [`30_scripts/WORKFLOW-GUI.md`](./30_scripts/WORKFLOW-GUI.md) |
+| Verify a downloaded release binary | [`RELEASE-VERIFICATION.md`](./RELEASE-VERIFICATION.md) |
 | Understand the full workflow (summary) | [Complete Workflow Guide](#complete-workflow-guide) below |
 
 ---
@@ -75,7 +92,8 @@ labs/
 |
 |-- README.md                    <- You are here
 |-- INDEX.md                     <- Auto-generated sample index (run export-summary.ps1)
-|-- WORKFLOW.md                  <- Full step-by-step workflow guide for new users
+|-- WORKFLOW.md                  <- Full step-by-step guide (Tracks A/B/C/D)
+|-- ENGAGEMENTS.md              <- Engagement kinds reference (file/ctf/lab/hunt)
 |-- RELEASE-VERIFICATION.md     <- Binary checksum verification and release policy
 |-- LICENSE                      <- MIT License
 |-- .gitignore                   <- Blocks executables, archives, secrets, OS noise
@@ -145,14 +163,15 @@ labs/
 
 | What IS here | What is NOT here |
 |---|---|
-| `.md` analysis notes per sample | Executable binaries (`.exe`, `.dll`, `.scr`, etc.) |
+| `.md` analysis notes (all engagement kinds) | Executable binaries (`.exe`, `.dll`, `.scr`, etc.) |
 | Hash references, acquisition checklists | Live or weaponized scripts |
+| CTF writeups (methodology, public-safe only) | Raw CTF flags, VPN configs, lab credentials |
+| Lab step logs and reflections | Course login credentials or instance IPs |
+| Threat hunt queries and outcomes | Internal org hostnames or user account data |
 | IOC tables (CSV) | VM disk images or snapshots |
-| Screenshots (`.png` / `.jpeg`) | Any file that can execute on a host machine |
+| Screenshots (`.png` / `.jpeg`, EXIF stripped) | Any file that can execute on a host machine |
 | Workflow and tooling documentation | Compiled code or packages |
-| CVE reference notes and vulnerability documentation | Proof-of-concept exploit code |
 | MITRE ATT&CK technique mapping notes | PII, credentials, or session data of any kind |
-| OSINT and threat intelligence methodology notes | Internal infrastructure details |
 | Case series cross-sample pattern notes | Host machine usernames or internal paths |
 
 ---
@@ -204,7 +223,8 @@ Current version: **schema_version: 1**. Every active findings file must include 
 | Script | One-line purpose |
 |--------|-----------------|
 | `workflow_gui.py` | Cross-platform GUI — paste all sample values once, every template section is auto-filled (includes Type selector) |
-| `new_sample.ps1` | Create a new sample slot — PE / Office / Script / Archive type-specific templates |
+| `new_engagement.ps1` | Create any engagement slot — file / ctf / lab / hunt with kind-specific templates |
+| `new_sample.ps1` | Backwards-compat alias for `new_engagement.ps1 -Kind file` |
 | `ingest-procmon.ps1` | Parse Procmon CSV from VM — write Markdown tables and IOC candidates into `02_dynamic` |
 | `close_sample.ps1` | Advance a slot's lifecycle status and print a phase-specific close checklist |
 | `validate.ps1` | Run 11 structural integrity checks; exits 1 if any FAIL |

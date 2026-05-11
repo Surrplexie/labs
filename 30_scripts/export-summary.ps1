@@ -1,29 +1,27 @@
 #Requires -Version 5.1
 <#
 .SYNOPSIS
-    Parses YAML frontmatter from 03_findings/sample_XX.md files and exports
-    a machine-readable summary.json and regenerates the repo INDEX.md.
+    Parses all engagement frontmatter and exports INDEX.md + dist/summary.json.
 
 .DESCRIPTION
-    Data sources (merged in this priority order):
-      1. samples_tracker.csv        - ground truth for sample_id, sha256, mb_url, name_tag, status.
-      2. 03_findings/sample_XX.md   - verdict, family, tags, MITRE, dates (via YAML frontmatter).
-      3. 40_iocs/indicators.csv     - IOC row count per sample (computed).
-
-    Outputs:
-      - INDEX.md at repo root   (committed - human-readable casebook index).
-      - dist/summary.json       (gitignored - machine-readable for tooling/scripts).
+    Kind-aware export. Reads samples_tracker.csv, merges with 03_findings frontmatter,
+    and generates:
+      - INDEX.md at repo root (committed -- human-readable logbook index)
+      - dist/summary.json (gitignored -- machine-readable)
 
     INDEX.md sections:
-      1. Summary stats
-      2. Active samples table (non-empty slots only)
-      3. Detail cards (one per active sample)
-      4. Cross-reference: By Tag
-      5. Cross-reference: By MITRE Technique
-      6. Reserve slots (empty slots, collapsed to a small table)
+      1.  Summary stats
+      2.  All engagements table (flat, kind column)
+      3.  File analyses (per-kind detail section)
+      4.  CTF write-ups
+      5.  Labs
+      6.  Threat hunts
+      7.  Cross-reference: by tag
+      8.  Cross-reference: by MITRE technique (file-kind)
+      9.  Reserve slots
 
 .PARAMETER Root
-    Path to the repo root. Defaults to the parent of this script's directory.
+    Path to the repo root. Defaults to parent of this script's directory.
 
 .PARAMETER SkipJson
     Skip writing dist/summary.json (INDEX.md still generated).
@@ -41,18 +39,19 @@ param(
 $ErrorActionPreference = 'Stop'
 
 # ---------------------------------------------------------------------------
-# MITRE technique name lookup (extend as new techniques are documented)
+# MITRE technique name lookup
 # ---------------------------------------------------------------------------
 
 $MITRE_NAMES = @{
-    'T1036'      = 'Masquerading'
-    'T1036.005'  = 'Masquerading: Match Legitimate Name or Location'
     'T1027'      = 'Obfuscated Files or Information'
     'T1027.002'  = 'Obfuscated Files: Software Packing'
+    'T1036'      = 'Masquerading'
+    'T1036.005'  = 'Masquerading: Match Legitimate Name or Location'
+    'T1041'      = 'Exfiltration Over C2 Channel'
+    'T1055'      = 'Process Injection'
     'T1059'      = 'Command and Scripting Interpreter'
     'T1059.001'  = 'Command and Scripting Interpreter: PowerShell'
     'T1059.003'  = 'Command and Scripting Interpreter: Windows Command Shell'
-    'T1055'      = 'Process Injection'
     'T1082'      = 'System Information Discovery'
     'T1083'      = 'File and Directory Discovery'
     'T1112'      = 'Modify Registry'
@@ -61,6 +60,7 @@ $MITRE_NAMES = @{
     'T1204.002'  = 'User Execution: Malicious File'
     'T1547'      = 'Boot or Logon Autostart Execution'
     'T1547.001'  = 'Boot or Logon Autostart: Registry Run Keys'
+    'T1555.003'  = 'Credentials from Web Browsers'
     'T1566'      = 'Phishing'
     'T1566.001'  = 'Phishing: Spearphishing Attachment'
     'T1583'      = 'Acquire Infrastructure'
@@ -71,15 +71,13 @@ $MITRE_NAMES = @{
 
 function Get-MitreName {
     param([string]$Id)
-    # Strip inline comment if present (e.g. "T1036    # comment")
     $clean = ($Id -split '#')[0].Trim()
     if ($MITRE_NAMES.ContainsKey($clean)) { return "$clean - $($MITRE_NAMES[$clean])" }
     return $clean
 }
 
 # ---------------------------------------------------------------------------
-# YAML frontmatter parser (no external deps)
-# Supports: scalar strings, quoted strings, inline comments, lists (- item)
+# YAML frontmatter parser
 # ---------------------------------------------------------------------------
 
 function Read-Frontmatter {
@@ -89,7 +87,6 @@ function Read-Frontmatter {
     if (-not (Test-Path $FilePath)) { return $result }
 
     $raw = Get-Content $FilePath -Raw -Encoding UTF8
-
     if ($raw -notmatch '(?s)^---\s*\r?\n(.*?)\r?\n---') { return $result }
     $block = $Matches[1]
 
@@ -107,9 +104,9 @@ function Read-Frontmatter {
 
         if ($inList -and $line -match '^\S') {
             $result[$currentKey] = $listValues
-            $inList      = $false
-            $listValues  = @()
-            $currentKey  = $null
+            $inList     = $false
+            $listValues = @()
+            $currentKey = $null
         }
 
         if ($line -match '^(\w[\w_-]*)\s*:\s*(.*)$') {
@@ -127,12 +124,11 @@ function Read-Frontmatter {
     }
 
     if ($inList -and $currentKey) { $result[$currentKey] = $listValues }
-
     return $result
 }
 
 # ---------------------------------------------------------------------------
-# Load data sources
+# Load data
 # ---------------------------------------------------------------------------
 
 $csvPath = Join-Path $Root 'samples_tracker.csv'
@@ -141,6 +137,7 @@ if (-not (Test-Path $csvPath)) {
     exit 1
 }
 $tracker = Import-Csv $csvPath
+$cols    = $tracker[0].PSObject.Properties.Name
 
 $iocCounts = @{}
 $iocPath   = Join-Path $Root '40_iocs\indicators.csv'
@@ -154,52 +151,88 @@ if (Test-Path $iocPath) {
 # Build merged records
 # ---------------------------------------------------------------------------
 
+function Coalesce2 {
+    param($a, $b, [string]$default = '')
+    if (-not [string]::IsNullOrWhiteSpace("$a")) { return "$a" }
+    if (-not [string]::IsNullOrWhiteSpace("$b")) { return "$b" }
+    return $default
+}
+
 $records = [System.Collections.Generic.List[hashtable]]::new()
 
 foreach ($row in $tracker) {
     $id     = $row.sample_id.Trim()
     $status = $row.status.Trim()
 
+    # Kind: prefer tracker column, fall back to 'file'
+    $kind = if ($cols -contains 'engagement_kind' -and $row.engagement_kind -ne '') {
+                $row.engagement_kind.Trim().ToLower()
+            } else { 'file' }
+
+    $platform = if ($cols -contains 'platform') { $row.platform.Trim() } else { '' }
+    $dateStarted = if ($cols -contains 'date_started') { $row.date_started.Trim() } else { '' }
+    $dateClosed  = if ($cols -contains 'date_closed')  { $row.date_closed.Trim()  } else { '' }
+    $scoreFlag   = if ($cols -contains 'score_flag')   { $row.score_flag.Trim()   } else { '' }
+
     $findingsFile = Join-Path $Root "03_findings\$id.md"
     $fm           = Read-Frontmatter -FilePath $findingsFile
 
-    $tags    = if ($fm.ContainsKey('tags'))             { [string[]]$fm['tags'] }             else { @() }
-    $mitre   = if ($fm.ContainsKey('mitre_techniques')) { [string[]]$fm['mitre_techniques'] } else { @() }
-    $iocCnt  = if ($iocCounts.ContainsKey($id))         { [int]$iocCounts[$id] }              else { 0 }
-
-    function Coalesce2 {
-        param($a, $b, [string]$default = '')
-        if (-not [string]::IsNullOrWhiteSpace("$a")) { return "$a" }
-        if (-not [string]::IsNullOrWhiteSpace("$b")) { return "$b" }
-        return $default
-    }
+    $tags   = if ($fm.ContainsKey('tags'))             { [string[]]$fm['tags'] }             else { @() }
+    $mitre  = if ($fm.ContainsKey('mitre_techniques')) { [string[]]$fm['mitre_techniques'] } else { @() }
+    $skills = if ($fm.ContainsKey('skills'))           { [string[]]$fm['skills'] }           else { @() }
+    $iocCnt = if ($iocCounts.ContainsKey($id))         { [int]$iocCounts[$id] }              else { 0 }
 
     $rec = @{
         sample_id         = $id
+        engagement_kind   = $kind
         sha256            = Coalesce2 $fm['sha256']            $row.sha256
-        name_tag          = Coalesce2 $fm['name_tag']          $row.name_tag
-        status            = Coalesce2 $status            $fm['status']       'empty'
-        verdict           = Coalesce2 $fm['verdict']           ''                  'unknown'
-        family_guess      = Coalesce2 $fm['family_guess']      ''                  ''
-        family_confidence = Coalesce2 $fm['family_confidence'] ''                  ''
-        analyst           = Coalesce2 $fm['analyst']           ''                  ''
-        date_acquired     = Coalesce2 $fm['date_acquired']     ''                  ''
-        date_analyzed     = Coalesce2 $fm['date_analyzed']     ''                  ''
-        mb_url            = Coalesce2 $fm['mb_url']            $row.mb_url         ''
+        name_tag          = Coalesce2 $fm['title']             (Coalesce2 $fm['name_tag'] $row.name_tag)
+        status            = Coalesce2 $status                  $fm['status'] 'empty'
+        platform          = Coalesce2 $fm['platform']          $platform
+        date_started      = Coalesce2 $fm['date_started']      $dateStarted
+        date_closed       = Coalesce2 $fm['date_closed']       $dateClosed
+        score_flag        = $scoreFlag
+        # file-kind fields
+        verdict           = Coalesce2 $fm['verdict']           '' 'unknown'
+        family_guess      = Coalesce2 $fm['family_guess']      '' ''
+        family_confidence = Coalesce2 $fm['family_confidence'] '' ''
+        analyst           = Coalesce2 $fm['analyst']           '' ''
+        date_acquired     = Coalesce2 $fm['date_acquired']     '' ''
+        date_analyzed     = Coalesce2 $fm['date_analyzed']     '' ''
+        mb_url            = Coalesce2 $fm['mb_url']            $row.mb_url ''
+        ioc_count         = $iocCnt
+        procmon_run       = Coalesce2 $fm['procmon_run']       '' 'false'
+        dynamic_complete  = Coalesce2 $fm['dynamic_complete']  '' 'false'
+        # ctf-kind fields
+        category          = Coalesce2 $fm['category']          '' ''
+        difficulty        = Coalesce2 $fm['difficulty']        '' ''
+        solved            = Coalesce2 $fm['solved']            '' 'false'
+        # lab-kind fields
+        course            = Coalesce2 $fm['course']            '' ''
+        module            = Coalesce2 $fm['module']            '' ''
+        objectives_met    = Coalesce2 $fm['objectives_met']    '' 'false'
+        # hunt-kind fields
+        hypothesis        = Coalesce2 $fm['hypothesis']        '' ''
+        detections_found  = Coalesce2 $fm['detections_found']  '' 'false'
+        # shared
+        outcome           = Coalesce2 $fm['outcome']           '' ''
+        confidence        = Coalesce2 $fm['confidence']        $fm['family_confidence'] ''
         tags              = $tags
         mitre_techniques  = $mitre
-        ioc_count         = $iocCnt
-        procmon_run       = Coalesce2 $fm['procmon_run']       ''                  'false'
-        dynamic_complete  = Coalesce2 $fm['dynamic_complete']  ''                  'false'
+        skills            = $skills
         has_frontmatter   = ($fm.Count -gt 0)
     }
 
     $records.Add($rec)
 }
 
-# Partition
 $activeRecs  = @($records | Where-Object { $_['status'] -ne 'empty' })
 $reserveRecs = @($records | Where-Object { $_['status'] -eq 'empty' })
+
+$fileRecs  = @($activeRecs | Where-Object { $_['engagement_kind'] -eq 'file' })
+$ctfRecs   = @($activeRecs | Where-Object { $_['engagement_kind'] -eq 'ctf' })
+$labRecs   = @($activeRecs | Where-Object { $_['engagement_kind'] -eq 'lab' })
+$huntRecs  = @($activeRecs | Where-Object { $_['engagement_kind'] -eq 'hunt' })
 
 # ---------------------------------------------------------------------------
 # Output 1: dist/summary.json
@@ -210,58 +243,57 @@ if (-not $SkipJson) {
     if (-not (Test-Path $distDir)) { New-Item -ItemType Directory -Path $distDir | Out-Null }
     $jsonPath = Join-Path $distDir 'summary.json'
 
-    # Versioned envelope -- schema_version matches 30_scripts/schema/summary.schema.json
     $envelope = [ordered]@{
-        schema_version = 1
+        schema_version = 2
         generated_at   = (Get-Date -Format 'yyyy-MM-ddTHH:mm:ssZ')
         record_count   = $records.Count
         active_count   = $activeRecs.Count
         reserve_count  = $reserveRecs.Count
+        file_count     = $fileRecs.Count
+        ctf_count      = $ctfRecs.Count
+        lab_count      = $labRecs.Count
+        hunt_count     = $huntRecs.Count
         records        = @($records)
     }
     $envelope | ConvertTo-Json -Depth 6 | Set-Content -Path $jsonPath -Encoding UTF8
-    Write-Host "[export] Wrote $jsonPath (schema_version: 1)" -ForegroundColor Green
+    Write-Host "[export] Wrote $jsonPath (schema_version: 2)" -ForegroundColor Green
 }
 
 # ---------------------------------------------------------------------------
 # Output 2: INDEX.md
 # ---------------------------------------------------------------------------
 
-$timestamp  = Get-Date -Format 'yyyy-MM-dd HH:mm UTC'
-$totalIoc   = 0; foreach ($r in $records) { $totalIoc += [int]$r['ioc_count'] }
+$timestamp   = Get-Date -Format 'yyyy-MM-dd HH:mm UTC'
+$totalIoc    = 0; foreach ($r in $records) { $totalIoc += [int]$r['ioc_count'] }
 $activeCount = $activeRecs.Count
 
 $sb = [System.Text.StringBuilder]::new()
 
-# ---- Header ----
 $null = $sb.AppendLine('<!-- AUTO-GENERATED by 30_scripts/export-summary.ps1 -- do not hand-edit this file -->')
 $null = $sb.AppendLine("<!-- Last generated: $timestamp -->")
 $null = $sb.AppendLine('')
-$null = $sb.AppendLine('# Sample Index')
+$null = $sb.AppendLine('# Logbook Index')
 $null = $sb.AppendLine('')
-$null = $sb.AppendLine('> Auto-generated casebook index. Run `30_scripts/export-summary.ps1` to refresh.')
+$null = $sb.AppendLine('> Auto-generated index. Run `30_scripts/export-summary.ps1` to refresh.')
 $null = $sb.AppendLine('> Edit YAML frontmatter in `03_findings/sample_XX.md` to update metadata.')
 $null = $sb.AppendLine('')
 $null = $sb.AppendLine('---')
 $null = $sb.AppendLine('')
 
 # ---- Stats ----
-$verdictGroups = $activeRecs | Group-Object { $_['verdict'] }
-$verdictSummary = ($verdictGroups | ForEach-Object { "$($_.Count) $($_.Name)" }) -join ' / '
-
 $null = $sb.AppendLine('## Summary')
 $null = $sb.AppendLine('')
-$null = $sb.AppendLine("| Metric | Value |")
-$null = $sb.AppendLine("|--------|-------|")
+$null = $sb.AppendLine('| Metric | Value |')
+$null = $sb.AppendLine('|--------|-------|')
 $null = $sb.AppendLine("| Total slots | $($records.Count) |")
-$null = $sb.AppendLine("| Active samples | $activeCount |")
+$null = $sb.AppendLine("| Active engagements | $activeCount |")
+$null = $sb.AppendLine("| File analyses | $($fileRecs.Count) |")
+$null = $sb.AppendLine("| CTF write-ups | $($ctfRecs.Count) |")
+$null = $sb.AppendLine("| Labs | $($labRecs.Count) |")
+$null = $sb.AppendLine("| Threat hunts | $($huntRecs.Count) |")
 $null = $sb.AppendLine("| Reserve slots | $($reserveRecs.Count) |")
-$null = $sb.AppendLine("| IOCs logged | $totalIoc |")
-if ($verdictSummary) {
-    $null = $sb.AppendLine("| Verdicts | $verdictSummary |")
-}
+$null = $sb.AppendLine("| IOCs logged (file kind) | $totalIoc |")
 
-# Unique tags across all active samples
 $allTags = @()
 foreach ($r in $activeRecs) { $allTags += $r['tags'] }
 $allTags = @($allTags | Select-Object -Unique | Sort-Object)
@@ -270,106 +302,127 @@ if ($allTags.Count -gt 0) {
     $null = $sb.AppendLine("| Tags in use | $tagLine |")
 }
 
-# Unique MITRE techniques
-$allMitre = @()
-foreach ($r in $activeRecs) { $allMitre += $r['mitre_techniques'] }
-$allMitre = @($allMitre | Select-Object -Unique | Sort-Object)
-if ($allMitre.Count -gt 0) {
-    $mitreIds = ($allMitre | ForEach-Object { "``$_``" }) -join ' '
-    $null = $sb.AppendLine("| MITRE techniques | $mitreIds |")
-}
-
 $null = $sb.AppendLine('')
 $null = $sb.AppendLine('---')
 $null = $sb.AppendLine('')
 
-# ---- Active samples table ----
+# ---- All engagements flat table ----
 if ($activeCount -gt 0) {
-    $null = $sb.AppendLine('## Active Samples')
+    $null = $sb.AppendLine('## All Engagements')
     $null = $sb.AppendLine('')
-    $null = $sb.AppendLine('| ID | Name / Tag | Status | Verdict | Family | Confidence | IOCs | Link |')
-    $null = $sb.AppendLine('|---|---|---|---|---|---|---|---|')
+    $null = $sb.AppendLine('| ID | Kind | Name / Title | Platform | Status | Outcome | Link |')
+    $null = $sb.AppendLine('|---|---|---|---|---|---|---|')
 
     foreach ($r in $activeRecs) {
-        $sid    = $r['sample_id']
-        $nt     = if ($r['name_tag'])          { $r['name_tag'] }          else { '(unset)' }
-        $vd     = if ($r['verdict'])           { $r['verdict'] }           else { 'unknown' }
-        $fam    = if ($r['family_guess'])      { $r['family_guess'] }      else { '(unset)' }
-        $conf   = if ($r['family_confidence']) { $r['family_confidence'] } else { '(unset)' }
-        $iocN   = if ($r['ioc_count'] -gt 0)  { $r['ioc_count'] }         else { '0' }
-        $link   = "[link](03_findings/$sid.md)"
-        $null = $sb.AppendLine("| ``$sid`` | $nt | $($r['status']) | $vd | $fam | $conf | $iocN | $link |")
+        $sid      = $r['sample_id']
+        $kindCol  = $r['engagement_kind']
+        $nt       = if ($r['name_tag'])  { $r['name_tag'] }  else { '(unset)' }
+        $platCol  = if ($r['platform'])  { $r['platform'] }  else { '-' }
+        $outcomeCol = switch ($kindCol) {
+            'file'  { if ($r['verdict']) { $r['verdict'] } else { 'unknown' } }
+            'ctf'   { if ($r['solved'] -eq 'true') { 'solved' } else { $r['status'] } }
+            'lab'   { if ($r['objectives_met'] -eq 'true') { 'objectives met' } else { $r['status'] } }
+            'hunt'  { if ($r['detections_found'] -eq 'true') { 'detection' } else { $r['status'] } }
+            default { $r['status'] }
+        }
+        $link     = "[link](03_findings/$sid.md)"
+        $null = $sb.AppendLine("| ``$sid`` | $kindCol | $nt | $platCol | $($r['status']) | $outcomeCol | $link |")
     }
 
-    $null = $sb.AppendLine('')
-    $null = $sb.AppendLine('---')
-    $null = $sb.AppendLine('')
-} else {
-    $null = $sb.AppendLine('*No active samples yet. Run `30_scripts/new_sample.ps1` to create a slot.*')
     $null = $sb.AppendLine('')
     $null = $sb.AppendLine('---')
     $null = $sb.AppendLine('')
 }
 
-# ---- Detail cards ----
-if ($activeCount -gt 0) {
-    $null = $sb.AppendLine('## Detail Cards')
+# ---- File analyses section ----
+if ($fileRecs.Count -gt 0) {
+    $null = $sb.AppendLine('## File Analyses')
     $null = $sb.AppendLine('')
+    $null = $sb.AppendLine('| ID | Name / Tag | Status | Verdict | Family | Confidence | IOCs |')
+    $null = $sb.AppendLine('|---|---|---|---|---|---|---|')
 
-    foreach ($r in $activeRecs) {
-        $sid = $r['sample_id']
-        $nt  = $r['name_tag']
-        $null = $sb.AppendLine("### ``$sid`` - $nt")
-        $null = $sb.AppendLine('')
-
-        if ($r['sha256']) {
-            $null = $sb.AppendLine("**SHA256:** ``$($r['sha256'])``  ")
-        }
-        if ($r['date_acquired']) {
-            $null = $sb.AppendLine("**Acquired:** $($r['date_acquired'])  |  **Analyzed:** $($r['date_analyzed'])  ")
-        }
-        if ($r['analyst']) {
-            $null = $sb.AppendLine("**Analyst:** $($r['analyst'])  ")
-        }
-        $null = $sb.AppendLine("**Status:** $($r['status'])  ")
-        $null = $sb.AppendLine("**Verdict:** $($r['verdict'])  ")
-
-        if ($r['family_guess']) {
-            $fg = $r['family_guess']
-            $fc = $r['family_confidence']
-            $null = $sb.AppendLine("**Family / Type:** $fg ($fc confidence)  ")
-        }
-        if ($r['tags'].Count -gt 0) {
-            $tagLine = ($r['tags'] | ForEach-Object { "``$_``" }) -join ' '
-            $null = $sb.AppendLine("**Tags:** $tagLine  ")
-        }
-        if ($r['mitre_techniques'].Count -gt 0) {
-            $mitreLine = ($r['mitre_techniques'] | ForEach-Object { "``$_``" }) -join ' '
-            $null = $sb.AppendLine("**MITRE:** $mitreLine  ")
-        }
-        if ($r['ioc_count'] -gt 0) {
-            $null = $sb.AppendLine("**IOCs logged:** $($r['ioc_count'])  ")
-        }
-        $procmon = if ($r['procmon_run'] -eq 'true') { 'Yes' } else { 'No' }
-        $dynComp = if ($r['dynamic_complete'] -eq 'true') { 'Yes' } else { 'No' }
-        $null = $sb.AppendLine("**Procmon run:** $procmon  |  **Dynamic complete:** $dynComp  ")
-        if ($r['mb_url']) {
-            $null = $sb.AppendLine("**MalwareBazaar:** [link]($($r['mb_url']))  ")
-        }
-
-        $null = $sb.AppendLine('')
-        $null = $sb.AppendLine("**Phase files:** [00_original](00_original/$sid.md) | [01_static](01_static/$sid.md) | [02_dynamic](02_dynamic/$sid.md) | [03_findings](03_findings/$sid.md)")
-        $null = $sb.AppendLine('')
-        $null = $sb.AppendLine('---')
-        $null = $sb.AppendLine('')
+    foreach ($r in $fileRecs) {
+        $sid  = $r['sample_id']
+        $nt   = if ($r['name_tag'])          { $r['name_tag'] }          else { '(unset)' }
+        $vd   = if ($r['verdict'])           { $r['verdict'] }           else { 'unknown' }
+        $fam  = if ($r['family_guess'])      { $r['family_guess'] }      else { '(unset)' }
+        $conf = if ($r['family_confidence']) { $r['family_confidence'] } else { '(unset)' }
+        $iocN = $r['ioc_count']
+        $null = $sb.AppendLine("| [``$sid``](03_findings/$sid.md) | $nt | $($r['status']) | $vd | $fam | $conf | $iocN |")
     }
+
+    $null = $sb.AppendLine('')
+    $null = $sb.AppendLine('---')
+    $null = $sb.AppendLine('')
+}
+
+# ---- CTF write-ups section ----
+if ($ctfRecs.Count -gt 0) {
+    $null = $sb.AppendLine('## CTF Write-ups')
+    $null = $sb.AppendLine('')
+    $null = $sb.AppendLine('| ID | Challenge | Platform | Category | Difficulty | Solved | Status |')
+    $null = $sb.AppendLine('|---|---|---|---|---|---|---|')
+
+    foreach ($r in $ctfRecs) {
+        $sid    = $r['sample_id']
+        $nt     = if ($r['name_tag'])   { $r['name_tag'] }   else { '(unset)' }
+        $plat   = if ($r['platform'])   { $r['platform'] }   else { '-' }
+        $cat    = if ($r['category'])   { $r['category'] }   else { '-' }
+        $diff   = if ($r['difficulty']) { $r['difficulty'] } else { '-' }
+        $solved = if ($r['solved'] -eq 'true') { 'Yes' } else { 'No' }
+        $null = $sb.AppendLine("| [``$sid``](03_findings/$sid.md) | $nt | $plat | $cat | $diff | $solved | $($r['status']) |")
+    }
+
+    $null = $sb.AppendLine('')
+    $null = $sb.AppendLine('---')
+    $null = $sb.AppendLine('')
+}
+
+# ---- Labs section ----
+if ($labRecs.Count -gt 0) {
+    $null = $sb.AppendLine('## Labs')
+    $null = $sb.AppendLine('')
+    $null = $sb.AppendLine('| ID | Lab name | Course | Objectives met | Status |')
+    $null = $sb.AppendLine('|---|---|---|---|---|')
+
+    foreach ($r in $labRecs) {
+        $sid  = $r['sample_id']
+        $nt   = if ($r['name_tag']) { $r['name_tag'] } else { '(unset)' }
+        $crs  = if ($r['course'])   { $r['course'] }   else { '-' }
+        $met  = if ($r['objectives_met'] -eq 'true') { 'Yes' } else { 'No' }
+        $null = $sb.AppendLine("| [``$sid``](03_findings/$sid.md) | $nt | $crs | $met | $($r['status']) |")
+    }
+
+    $null = $sb.AppendLine('')
+    $null = $sb.AppendLine('---')
+    $null = $sb.AppendLine('')
+}
+
+# ---- Threat hunts section ----
+if ($huntRecs.Count -gt 0) {
+    $null = $sb.AppendLine('## Threat Hunts')
+    $null = $sb.AppendLine('')
+    $null = $sb.AppendLine('| ID | Hypothesis | Detections found | Confidence | Status |')
+    $null = $sb.AppendLine('|---|---|---|---|---|')
+
+    foreach ($r in $huntRecs) {
+        $sid  = $r['sample_id']
+        $hyp  = if ($r['hypothesis']) { $r['hypothesis'] } else { if ($r['name_tag']) { $r['name_tag'] } else { '(unset)' } }
+        $det  = if ($r['detections_found'] -eq 'true') { 'Yes' } else { 'No' }
+        $conf = if ($r['confidence']) { $r['confidence'] } else { '-' }
+        $null = $sb.AppendLine("| [``$sid``](03_findings/$sid.md) | $hyp | $det | $conf | $($r['status']) |")
+    }
+
+    $null = $sb.AppendLine('')
+    $null = $sb.AppendLine('---')
+    $null = $sb.AppendLine('')
 }
 
 # ---- Cross-reference: By Tag ----
 if ($allTags.Count -gt 0) {
     $null = $sb.AppendLine('## Cross-Reference: By Tag')
     $null = $sb.AppendLine('')
-    $null = $sb.AppendLine('> Samples grouped by analytical tag. One sample can appear under multiple tags.')
+    $null = $sb.AppendLine('> Engagements grouped by analytical tag.')
     $null = $sb.AppendLine('')
 
     foreach ($tag in ($allTags | Sort-Object)) {
@@ -379,12 +432,10 @@ if ($allTags.Count -gt 0) {
         $null = $sb.AppendLine("### ``$tag``")
         $null = $sb.AppendLine('')
         foreach ($r in $samplesWithTag) {
-            $sid  = $r['sample_id']
-            $nt   = if ($r['name_tag']) { $r['name_tag'] } else { '(unset)' }
-            $vd   = if ($r['verdict'])  { $r['verdict'] }  else { 'unknown' }
-            $conf = if ($r['family_confidence']) { $r['family_confidence'] } else { ''  }
-            $note = if ($conf) { "$vd ($conf confidence)" } else { $vd }
-            $null = $sb.AppendLine("- [``$sid``](03_findings/$sid.md) - $nt -- $note")
+            $sid    = $r['sample_id']
+            $nt     = if ($r['name_tag']) { $r['name_tag'] } else { '(unset)' }
+            $knd    = $r['engagement_kind']
+            $null = $sb.AppendLine("- [``$sid``](03_findings/$sid.md) [$knd] -- $nt")
         }
         $null = $sb.AppendLine('')
     }
@@ -393,16 +444,20 @@ if ($allTags.Count -gt 0) {
     $null = $sb.AppendLine('')
 }
 
-# ---- Cross-reference: By MITRE Technique ----
+# ---- Cross-reference: By MITRE (file-kind only) ----
+$allMitre = @()
+foreach ($r in $fileRecs) { $allMitre += $r['mitre_techniques'] }
+$allMitre = @($allMitre | Select-Object -Unique | Sort-Object)
+
 if ($allMitre.Count -gt 0) {
     $null = $sb.AppendLine('## Cross-Reference: By MITRE ATT&CK Technique')
     $null = $sb.AppendLine('')
-    $null = $sb.AppendLine('> Observed or inferred techniques mapped to samples. Not a certified assessment -- triage-level mapping only.')
+    $null = $sb.AppendLine('> File-kind engagements only. Triage-level mapping -- not a certified assessment.')
     $null = $sb.AppendLine('')
 
     foreach ($techId in ($allMitre | Sort-Object)) {
         $techName = Get-MitreName $techId
-        $samplesWithTech = @($activeRecs | Where-Object { $_['mitre_techniques'] -contains $techId })
+        $samplesWithTech = @($fileRecs | Where-Object { $_['mitre_techniques'] -contains $techId })
         if ($samplesWithTech.Count -eq 0) { continue }
 
         $null = $sb.AppendLine("### ``$techName``")
@@ -410,14 +465,13 @@ if ($allMitre.Count -gt 0) {
         foreach ($r in $samplesWithTech) {
             $sid = $r['sample_id']
             $nt  = if ($r['name_tag']) { $r['name_tag'] } else { '(unset)' }
-            $fam = if ($r['family_guess']) { $r['family_guess'] } else { '' }
-            $note = if ($fam) { $fam } else { $r['verdict'] }
-            $null = $sb.AppendLine("- [``$sid``](03_findings/$sid.md) - $nt ($note)")
+            $fam = if ($r['family_guess']) { $r['family_guess'] } else { $r['verdict'] }
+            $null = $sb.AppendLine("- [``$sid``](03_findings/$sid.md) - $nt ($fam)")
         }
         $null = $sb.AppendLine('')
     }
 
-    $null = $sb.AppendLine('> See `20_notes/MITRE-coverage.md` for the full hand-maintained technique coverage tracker.')
+    $null = $sb.AppendLine('> See `20_notes/MITRE-coverage.md` for the full hand-maintained coverage tracker.')
     $null = $sb.AppendLine('')
     $null = $sb.AppendLine('---')
     $null = $sb.AppendLine('')
@@ -427,7 +481,7 @@ if ($allMitre.Count -gt 0) {
 if ($reserveRecs.Count -gt 0) {
     $null = $sb.AppendLine('## Reserve Slots')
     $null = $sb.AppendLine('')
-    $null = $sb.AppendLine('> Unassigned slots. Run `30_scripts/new_sample.ps1 -NextNumber N` to scaffold.')
+    $null = $sb.AppendLine('> Unassigned. Run `30_scripts/new_engagement.ps1 -NextNumber N` to scaffold.')
     $null = $sb.AppendLine('')
     $null = $sb.AppendLine('| ID | Notes |')
     $null = $sb.AppendLine('|---|---|')
@@ -439,10 +493,9 @@ if ($reserveRecs.Count -gt 0) {
     $null = $sb.AppendLine('')
 }
 
-# ---- Footer ----
-$null = $sb.AppendLine('*Auto-generated -- edit frontmatter in `03_findings/sample_XX.md` and re-run `30_scripts/export-summary.ps1` to update.*')
+$null = $sb.AppendLine('*Auto-generated -- edit frontmatter in `03_findings/sample_XX.md` and re-run `export-summary.ps1` to update.*')
 
 $indexPath = Join-Path $Root 'INDEX.md'
 $sb.ToString() | Set-Content -Path $indexPath -Encoding UTF8
 Write-Host "[export] Wrote $indexPath" -ForegroundColor Green
-Write-Host "[export] Done. $($records.Count) records ($activeCount active, $($reserveRecs.Count) reserve)." -ForegroundColor Cyan
+Write-Host "[export] Done. $($records.Count) records ($activeCount active: $($fileRecs.Count) file / $($ctfRecs.Count) ctf / $($labRecs.Count) lab / $($huntRecs.Count) hunt -- $($reserveRecs.Count) reserve)." -ForegroundColor Cyan

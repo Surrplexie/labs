@@ -62,6 +62,60 @@ Envelope wraps the records array with:
 
 ---
 
+---
+
+## Version 2 (current) -- 2026-05-11
+
+**Multi-engagement-kind support.** Adds `ctf`, `lab`, and `hunt` as first-class
+kinds alongside the original `file` kind.
+
+### Breaking changes from v1
+
+- `schema_version` now accepts `1` or `2` (v1 files continue to validate under v1 rules).
+- `summary.json` envelope now carries `schema_version: 2` with kind-breakdown counts
+  (`file_count`, `ctf_count`, `lab_count`, `hunt_count`).
+- `engagement_kind` is a new required column in `samples_tracker.csv`; v1 trackers
+  without this column default all rows to `file` in validate/export.
+
+### New shared frontmatter fields (v2)
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `engagement_kind` | string enum | `file` \| `ctf` \| `lab` \| `hunt` |
+| `title` | string | Human-readable name (all kinds; maps to `name_tag` for file) |
+| `date_started` | string | YYYY-MM-DD |
+| `date_closed` | string | YYYY-MM-DD or empty |
+| `outcome` | string enum | `success` \| `partial` \| `failed` \| `abandoned` \| `unknown` |
+| `skills` | string[] | Skills exercised (for portfolio) |
+
+### CTF-specific fields (v2)
+
+`platform`, `category`, `difficulty`, `points`, `solved`, `public_writeup_safe`
+
+### Lab-specific fields (v2)
+
+`course`, `module`, `environment`, `objectives[]`, `objectives_met`
+
+### Hunt-specific fields (v2)
+
+`hypothesis`, `data_sources[]`, `timebox`, `detections_found`, `ioc_count`
+
+### Migration from v1 to v2 (file engagements)
+
+File-kind frontmatter does NOT need to change. `schema_version: 1` files continue
+to pass validation under v1 rules. When you create a new file engagement with
+`new_engagement.ps1`, it will emit `schema_version: 1` and `engagement_kind: file`
+for consistency with existing files.
+
+To explicitly upgrade an existing file findings file to v2, add:
+```yaml
+schema_version: 2
+engagement_kind: file
+```
+and any new optional v2 fields you want to use (`skills`, `outcome`, etc.).
+
+---
+
 ## Upgrade guide (future)
 
 When a **breaking change** is needed:

@@ -1,6 +1,17 @@
 # 02_dynamic
 
-**Dynamic triage notes — what happens when you run it, instrument it, and watch it.**
+**Third phase folder — meaning depends on engagement kind.**
+
+| Kind | What this folder holds |
+|------|------------------------|
+| `file` | Dynamic triage (Procmon, Process Explorer, TCPView, network captures) |
+| `ctf` | Solve attempt (approach log, commands/exploits tried, pivots, flag capture) |
+| `lab` | Results (objectives completion, errors encountered, proof/output) |
+| `hunt` | Analysis (timeline, pattern correlation, false positives, IOC candidates) |
+
+---
+
+**For `file` engagements:** Dynamic triage notes — what happens when you run it, instrument it, and watch it.
 
 Each `sample_XX.md` in this folder documents runtime behavior observed during a
 controlled execution inside an isolated VM: process activity, file drops, registry

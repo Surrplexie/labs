@@ -1,6 +1,20 @@
 # 03_findings
 
-**Findings and portfolio slices — one file per sample, the final word on each analysis.**
+**Final phase folder — the synthesis document for every engagement kind.**
+
+| Kind | What this folder holds | Key YAML fields |
+|------|------------------------|-----------------|
+| `file` | Verdict, IOC table, MITRE mapping, portfolio blurb | `verdict`, `mitre_techniques`, `sha256` |
+| `ctf` | Writeup, methodology, skills list, public-safe flag proof | `solved`, `category`, `difficulty`, `skills` |
+| `lab` | Reflection, objectives met, skills demonstrated | `objectives_met`, `skills`, `course` |
+| `hunt` | Outcome, detections, confidence, recommendations | `detections_found`, `hypothesis`, `outcome` |
+
+All findings files use YAML frontmatter with `schema_version: 1` (file kind) or
+`schema_version: 2` (ctf/lab/hunt). See [`30_scripts/schema/CHANGELOG.md`](../30_scripts/schema/CHANGELOG.md).
+
+---
+
+**For `file` engagements:** Findings and portfolio slices — the final word on each analysis.
 
 Each `sample_XX.md` in this folder is the synthesis document that ties the other three
 phases together: a YAML frontmatter block (machine-readable metadata), a working

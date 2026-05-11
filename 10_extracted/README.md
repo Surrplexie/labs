@@ -1,5 +1,9 @@
 # 10_extracted
 
+> **File-kind engagements only.** This folder holds non-executable artifacts extracted
+> from file samples. CTF/lab/hunt engagements do not use this folder.
+
+
 **Non-executable artifacts extracted from samples during static analysis.**
 
 Anything pulled out of a sample that is itself not executable goes here, keyed

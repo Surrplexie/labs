@@ -27,16 +27,32 @@ from tkinter import filedialog, messagebox, scrolledtext, ttk
 # Constants
 # ---------------------------------------------------------------------------
 
-APP_TITLE   = "Workflow HUD -- Labs Triage Assistant"
-APP_VERSION = "1.0.0"
+APP_TITLE   = "Workflow HUD -- Labs Engagement Assistant"
+APP_VERSION = "2.0.0"
 CONFIG_FILE = Path(__file__).parent / ".workflow_gui_config.json"
 
 VERDICTS    = ["suspicious", "malicious", "benign", "unknown"]
 CONFIDENCES = ["high", "medium-high", "medium", "low"]
-STATUSES    = ["queued", "static", "dynamic", "done"]
 SAMPLE_TYPES = ["PE", "Office", "Script", "Archive"]
 
-# Per-type MITRE seed tags (shown in form hints)
+# Engagement kinds and their status lifecycles
+ENGAGEMENT_KINDS = ["file", "ctf", "lab", "hunt"]
+KIND_STATUSES = {
+    "file":  ["queued", "static", "dynamic", "done"],
+    "ctf":   ["assigned", "recon", "stuck", "solved", "writeup_done"],
+    "lab":   ["not_started", "in_progress", "objectives_met", "reviewed"],
+    "hunt":  ["scoped", "collecting", "analyzing", "closed"],
+}
+STATUSES = KIND_STATUSES["file"]  # kept for compat
+
+CTF_PLATFORMS   = ["HackTheBox", "TryHackMe", "PicoCTF", "CTFtime", "SANS", "internal", "other"]
+CTF_CATEGORIES  = ["web", "pwn", "rev", "crypto", "forensics", "misc", "osint", "network", "other"]
+CTF_DIFFICULTIES = ["easy", "medium", "hard", "insane"]
+
+LAB_PLATFORMS = ["TryHackMe", "HackTheBox", "SANS", "Offensive Security", "TCM Security",
+                  "Cybrary", "PNPT", "INE", "employer", "internal", "other"]
+
+# Per-type MITRE seed tags (file kind only)
 TYPE_MITRE_HINTS = {
     "PE":      "T1204.002, T1027, T1547.001",
     "Office":  "T1566.001, T1059.001, T1059.003",
@@ -48,6 +64,18 @@ TYPE_TAG_HINTS = {
     "Office":  "office-macro, ole",
     "Script":  "script",
     "Archive": "archive, container",
+}
+
+# Per-kind tag / skill hints
+KIND_TAG_HINTS = {
+    "ctf":  "ctf, web, sqli, rce, privesc, rev, crypto",
+    "lab":  "lab, hands-on",
+    "hunt": "hunt, detection, siem",
+}
+KIND_SKILL_HINTS = {
+    "ctf":  "e.g. SQL injection, buffer overflow, enumeration",
+    "lab":  "e.g. Linux fundamentals, network scanning",
+    "hunt": "e.g. log analysis, SIEM querying, threat hunting",
 }
 
 # Dark theme palette
@@ -618,17 +646,17 @@ class WorkflowApp(tk.Tk):
 
     def _build_new_sample_tab(self):
         outer = ttk.Frame(self._nb)
-        self._nb.add(outer, text="  New Sample  ")
+        self._nb.add(outer, text="  New Engagement  ")
         _, frame = _scrollable_frame(outer)
         frame.columnconfigure(1, weight=1)
 
         self._ns = {}
         R = 0  # running row index
 
-        # -- Sample identity --
-        _section_label(frame, "SAMPLE IDENTITY", R); R += 2
+        # -- Engagement identity --
+        _section_label(frame, "ENGAGEMENT IDENTITY", R); R += 2
 
-        _lbl(frame, "Sample #", R)
+        _lbl(frame, "Slot #", R)
         nf = ttk.Frame(frame)
         nf.grid(row=R, column=1, sticky="ew", padx=(0, 12), pady=3)
         self._ns["num"] = tk.StringVar()
@@ -637,14 +665,58 @@ class WorkflowApp(tk.Tk):
                    command=self._auto_detect_num).pack(side="left", padx=(8, 0))
         R += 1
 
-        _lbl(frame, "Sample type", R)
+        _lbl(frame, "Engagement kind", R)
+        self._ns["kind"] = tk.StringVar(value="file")
+        _combo(frame, self._ns["kind"], ENGAGEMENT_KINDS, R)
+        ttk.Label(frame, text="file=malware  ctf=challenge  lab=training  hunt=detection",
+                  style="Dim.TLabel", font=(UI_FONT[0], 8)).grid(
+                  row=R, column=2, sticky="w", padx=4)
+        self._ns["kind"].trace_add("write", self._on_kind_change)
+        R += 1
+
+        _lbl(frame, "Title / name", R)
+        self._ns["title"] = tk.StringVar()
+        _entry(frame, self._ns["title"], R)
+        ttk.Label(frame, text="CTF challenge name, lab module title, or file tag",
+                  style="Dim.TLabel", font=(UI_FONT[0], 8)).grid(
+                  row=R, column=2, sticky="w", padx=4)
+        R += 1
+
+        # -- File-kind type selector (shown only for file) --
+        self._ns["_type_row_lbl"] = _lbl(frame, "File sample type", R)
         self._ns["sample_type"] = tk.StringVar(value="PE")
-        tc = _combo(frame, self._ns["sample_type"], SAMPLE_TYPES, R)
-        ttk.Label(frame,
+        self._ns["_type_combo"] = _combo(frame, self._ns["sample_type"], SAMPLE_TYPES, R)
+        self._ns["_type_hint"] = ttk.Label(frame,
                   text="PE=exe/dll  Office=doc/xls  Script=ps1/vbs/js  Archive=zip/iso",
-                  style="Dim.TLabel",
-                  font=(UI_FONT[0], 8)).grid(row=R, column=2, sticky="w", padx=4)
+                  style="Dim.TLabel", font=(UI_FONT[0], 8))
+        self._ns["_type_hint"].grid(row=R, column=2, sticky="w", padx=4)
         self._ns["sample_type"].trace_add("write", self._on_type_change)
+        self._ns["_type_row"] = R
+        R += 1
+
+        # -- CTF/lab platform (shown for ctf/lab) --
+        self._ns["_plat_row_lbl"] = _lbl(frame, "Platform", R)
+        self._ns["platform"] = tk.StringVar(value="")
+        self._ns["_plat_entry"] = _entry(frame, self._ns["platform"], R)
+        ttk.Label(frame, text="e.g. HackTheBox, TryHackMe, PicoCTF, internal",
+                  style="Dim.TLabel", font=(UI_FONT[0], 8)).grid(
+                  row=R, column=2, sticky="w", padx=4)
+        self._ns["_plat_row"] = R
+        R += 1
+
+        # -- CTF-specific fields --
+        self._ns["_ctf_row_lbl"] = _lbl(frame, "Category", R)
+        self._ns["ctf_category"] = tk.StringVar(value="")
+        self._ns["_ctf_cat_combo"] = _combo(frame, self._ns["ctf_category"],
+                                             [""] + CTF_CATEGORIES, R)
+        self._ns["_ctf_row"] = R
+        R += 1
+
+        self._ns["_diff_row_lbl"] = _lbl(frame, "Difficulty", R)
+        self._ns["ctf_difficulty"] = tk.StringVar(value="")
+        self._ns["_diff_combo"] = _combo(frame, self._ns["ctf_difficulty"],
+                                          [""] + CTF_DIFFICULTIES, R)
+        self._ns["_diff_row"] = R
         R += 1
 
         _lbl(frame, "Analyst", R)
@@ -655,16 +727,17 @@ class WorkflowApp(tk.Tk):
         _section_label(frame, "DATES", R); R += 2
 
         for label, key, default in [
-            ("Date acquired",          "date_acquired", today()),
-            ("Date analyzed",          "date_analyzed", today()),
+            ("Date started",           "date_acquired", today()),
+            ("Date analyzed/closed",   "date_analyzed", today()),
             ("First seen (Bazaar UTC)", "first_seen",   ""),
         ]:
             _lbl(frame, label, R)
             self._ns[key] = tk.StringVar(value=default)
             _entry(frame, self._ns[key], R); R += 1
 
-        # -- Hashes --
-        _section_label(frame, "HASHES  (paste from MalwareBazaar)", R); R += 2
+        # -- Hashes (file kind) --
+        self._ns["_hashes_section_row"] = R
+        _section_label(frame, "HASHES  (paste from MalwareBazaar -- file kind only)", R); R += 2
 
         for label, key in [("SHA256", "sha256"), ("SHA1", "sha1"), ("MD5", "md5")]:
             _lbl(frame, label, R)
@@ -938,6 +1011,63 @@ class WorkflowApp(tk.Tk):
             if not current_url:
                 self._ns["mb_url"].set(f"https://bazaar.abuse.ch/sample/{sha}/")
 
+    def _on_kind_change(self, *_):
+        """Show/hide fields based on engagement kind selection."""
+        kind = self._ns.get("kind", tk.StringVar()).get()
+        is_file = (kind == "file")
+        is_ctf  = (kind == "ctf")
+        is_lab  = (kind == "lab")
+
+        # File-kind type row
+        for w in ("_type_row_lbl", "_type_combo", "_type_hint"):
+            w_obj = self._ns.get(w)
+            if w_obj:
+                try:
+                    if is_file:
+                        w_obj.grid()
+                    else:
+                        w_obj.grid_remove()
+                except Exception:
+                    pass
+
+        # Platform row (ctf and lab)
+        for w in ("_plat_row_lbl", "_plat_entry"):
+            w_obj = self._ns.get(w)
+            if w_obj:
+                try:
+                    if is_ctf or is_lab:
+                        w_obj.grid()
+                    else:
+                        w_obj.grid_remove()
+                except Exception:
+                    pass
+
+        # CTF-only rows (category, difficulty)
+        for w in ("_ctf_row_lbl", "_ctf_cat_combo", "_diff_row_lbl", "_diff_combo"):
+            w_obj = self._ns.get(w)
+            if w_obj:
+                try:
+                    if is_ctf:
+                        w_obj.grid()
+                    else:
+                        w_obj.grid_remove()
+                except Exception:
+                    pass
+
+        # Seed tag hints per kind
+        if kind in KIND_TAG_HINTS:
+            tag_var = self._ns.get("tags")
+            if tag_var and not tag_var.get():
+                tag_var.set(KIND_TAG_HINTS[kind])
+        elif is_file:
+            self._on_type_change()
+
+        # Seed skills hint for non-file
+        if kind in KIND_SKILL_HINTS:
+            skills_var = self._ns.get("skills")
+            if skills_var and not skills_var.get():
+                skills_var.set(KIND_SKILL_HINTS[kind])
+
     def _on_type_change(self, *_):
         """Seed tags and MITRE hint fields when the sample type changes."""
         t = self._ns["sample_type"].get()
@@ -973,18 +1103,63 @@ class WorkflowApp(tk.Tk):
             messagebox.showerror("Invalid #", "Sample # must be a whole number.")
             return
 
-        n   = int(num_str)
-        sid = f"sample_{pad2(n)}"
+        n    = int(num_str)
+        sid  = f"sample_{pad2(n)}"
+        kind = self._ns.get("kind", tk.StringVar()).get() or "file"
 
-        # Overwrite guard
-        for d in ("00_original", "01_static", "02_dynamic", "03_findings"):
-            p = self.repo_root / d / f"{sid}.md"
-            if p.exists():
-                if not messagebox.askyesno("Overwrite?",
-                    f"{sid}.md exists in {d}/.\n\nOverwrite all phase files?"):
+        # Delegate to new_engagement.ps1 for non-file kinds (or always use it)
+        use_ps1 = True  # always use the scaffold script for consistency
+
+        if use_ps1:
+            eng_script = self.repo_root / "30_scripts" / "new_engagement.ps1"
+            if not eng_script.exists():
+                messagebox.showerror("Missing script",
+                    "30_scripts/new_engagement.ps1 not found.")
+                return
+            analyst  = self._ns["analyst"].get().strip() or "Surrplexie"
+            title    = self._ns.get("title", tk.StringVar()).get().strip()
+            platform = self._ns.get("platform", tk.StringVar()).get().strip()
+            stype    = self._ns["sample_type"].get() if kind == "file" else "PE"
+
+            args = [
+                "powershell", "-ExecutionPolicy", "Bypass",
+                "-File", str(eng_script),
+                "-NextNumber", str(n),
+                "-Kind", kind,
+                "-Analyst", analyst,
+            ]
+            if kind == "file":
+                args += ["-Type", stype]
+            if title:
+                args += ["-Title", title]
+            if platform:
+                args += ["-Platform", platform]
+
+            self._log(f"Running new_engagement.ps1 for {sid} (kind={kind})...")
+            try:
+                result = subprocess.run(
+                    args, cwd=str(self.repo_root),
+                    capture_output=True, text=True, timeout=60
+                )
+                if result.returncode != 0:
+                    self._log(result.stdout)
+                    self._log(result.stderr)
+                    messagebox.showerror("Script error",
+                        f"new_engagement.ps1 exited {result.returncode}.\n"
+                        f"See log panel for details.")
                     return
-                break
+                self._log(result.stdout)
+                messagebox.showinfo("Created",
+                    f"{sid} scaffolded ({kind}).\n\n"
+                    f"Phase files written. Open them to fill details.\n"
+                    f"Tracker updated.")
+                self._log(f"Created {sid} (kind={kind}).")
+            except Exception as exc:
+                messagebox.showerror("Error", str(exc))
+                self._log(f"Error: {exc}")
+            return
 
+        # Legacy inline file-only path (kept as fallback)
         v = {
             "sample_id":        sid,
             "sha256":           self._ns["sha256"].get().strip(),
@@ -1008,7 +1183,6 @@ class WorkflowApp(tk.Tk):
             "yara_rows":        self._ns["yara_txt"].get("1.0", "end").strip(),
             "sample_type":      self._ns["sample_type"].get(),
         }
-
         try:
             phases = {
                 self.repo_root / "00_original" / f"{sid}.md": build_original(v),
@@ -1019,31 +1193,22 @@ class WorkflowApp(tk.Tk):
             for path, content in phases.items():
                 path.parent.mkdir(parents=True, exist_ok=True)
                 path.write_text(content, encoding="utf-8")
-
             shot_dir = self.repo_root / "50_screenshots" / sid
             shot_dir.mkdir(parents=True, exist_ok=True)
             idx = shot_dir / "SHOT_INDEX.txt"
             if not idx.exists():
                 idx.write_text(build_shot_index(v), encoding="utf-8")
-
             update_tracker_row(self.repo_root, sid,
                                v["sha256"], v["analyst"], v["date_acquired"])
-
         except Exception as exc:
             messagebox.showerror("Error", str(exc))
             self._log(f"Error: {exc}")
             return
 
         messagebox.showinfo("Created",
-            f"{sid} scaffolded successfully.\n\n"
-            f"  00_original/{sid}.md  - acquisition receipt\n"
-            f"  01_static/{sid}.md    - static triage\n"
-            f"  02_dynamic/{sid}.md   - dynamic triage\n"
-            f"  03_findings/{sid}.md  - findings + frontmatter\n"
-            f"  50_screenshots/{sid}/ - screenshot folder\n\n"
-            f"samples_tracker.csv updated to 'queued'.\n\n"
-            f"Open the .md files and fill any remaining PENDING fields.")
-        self._log(f"Created {sid} -- all phase files written.")
+            f"{sid} scaffolded (file/legacy).\n"
+            f"Open the .md files and fill remaining fields.")
+        self._log(f"Created {sid} (legacy path).")
 
     def _clear_ns_form(self):
         for key in ("sha256", "sha1", "md5", "filename", "mime",

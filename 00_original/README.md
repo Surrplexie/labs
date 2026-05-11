@@ -31,10 +31,30 @@ Each `sample_XX.md` in this folder documents the sample's identity and sourcing
 `sample_01.md` through `sample_99.md` (zero-padded).
 The same ID runs across `01_static/`, `02_dynamic/`, `03_findings/`, and `50_screenshots/`.
 
+## Meaning by engagement kind
+
+| Kind | What goes in this folder |
+|------|--------------------------|
+| `file` | MalwareBazaar metadata, hash set, YARA hits, acquisition checklist |
+| `ctf` | Challenge brief, platform/category/difficulty, target info, description |
+| `lab` | Lab brief, learning objectives, environment (VM name only), resources |
+| `hunt` | Hunt scope, hypothesis, data sources, tools, time box, out of scope |
+
 ## Creating a new slot
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\30_scripts\new_sample.ps1 -NextNumber 7
+# File sample (default)
+powershell -ExecutionPolicy Bypass -File .\30_scripts\new_engagement.ps1 -NextNumber 7
+
+# CTF challenge
+powershell -ExecutionPolicy Bypass -File .\30_scripts\new_engagement.ps1 -NextNumber 7 -Kind ctf -Platform "HackTheBox" -Title "Lame"
+
+# Lab
+powershell -ExecutionPolicy Bypass -File .\30_scripts\new_engagement.ps1 -NextNumber 8 -Kind lab -Platform "TryHackMe" -Title "Pre-Security"
+
+# Threat hunt
+powershell -ExecutionPolicy Bypass -File .\30_scripts\new_engagement.ps1 -NextNumber 9 -Kind hunt -Title "Lateral movement via SMB"
 ```
 
 This creates all four phase files, the screenshot folder, and a tracker CSV row in one step.
+`new_sample.ps1` still works as a backwards-compatible alias for `-Kind file`.
