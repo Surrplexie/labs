@@ -1,10 +1,22 @@
 # 40_iocs
 
-**Consolidated indicator-of-compromise (IOC) table for all documented samples.**
+**Consolidated indicator-of-compromise (IOC) table for `file`-kind and `hunt`-kind engagements.**
 
-`indicators.csv` is the single flat file that aggregates IOCs from every sample.
-It is designed for easy sharing, import into SIEM tools, or cross-referencing
-with external threat intelligence.
+`indicators.csv` is the single flat file that aggregates IOCs across all engagements
+that produce concrete indicators. It is designed for easy sharing, import into SIEM tools,
+or cross-referencing with external threat intelligence.
+
+**Scope by engagement kind:**
+
+| Kind | Uses this folder? | What goes here |
+|------|-------------------|----------------|
+| `file` | **Yes** | File hashes, URLs, IPs, domains, registry keys, mutex names from malware analysis |
+| `hunt` | **Yes** | Confirmed IOC candidates from SIEM/Sysmon data: file hashes, IPs, process paths |
+| `ctf` | No | CTF flags and platform credentials do **not** go here |
+| `lab` | No | Lab credentials and test data do **not** go here |
+
+For `ctf` and `lab` kinds, any indicators found (if applicable) belong in the
+`03_findings` frontmatter or the engagement notes -- not in this shared CSV.
 
 ---
 

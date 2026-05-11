@@ -11,20 +11,77 @@ All scripts require PowerShell 5.1+ and run from anywhere (they resolve the repo
 
 | Script | Purpose | When to run |
 |--------|---------|-------------|
-| `workflow_gui.py` | GUI: autofill phase files from pasted metadata | Optional; alternative or complement to `new_sample.ps1` |
-| `new_sample.ps1` | Scaffold a new sample slot (PE / Office / Script / Archive templates) | Before starting a new sample |
-| `ingest-procmon.ps1` | Parse Procmon CSV -> Markdown tables + IOC candidates in 02_dynamic | After dynamic VM run, before `close_sample.ps1 -Status dynamic` |
+| `workflow_gui.py` | GUI: autofill phase files from pasted metadata (all engagement kinds) | Optional; alternative to `new_engagement.ps1` |
+| `new_engagement.ps1` | Scaffold any engagement slot (`file`, `ctf`, `lab`, `hunt`) | Before starting any engagement |
+| `new_sample.ps1` | Backward-compatible alias for `new_engagement.ps1 -Kind file` | Legacy; prefer `new_engagement.ps1` |
+| `ingest-procmon.ps1` | Parse Procmon CSV -> Markdown tables + IOC candidates in `02_dynamic` | After dynamic VM run (file kind) |
+| `ingest-events.ps1` | Parse SIEM/Sysmon event export -> timeline + IOC candidates in `02_dynamic` | After hunt data collection |
 | `install-hooks.ps1` | Install pre-push git hook (Windows) | Once, after cloning |
 | `install-hooks.sh` | Install pre-push git hook (Linux) | Once, after cloning |
-| `close_sample.ps1` | Advance slot status, print close checklist | After each analysis phase |
-| `validate.ps1` | Structural integrity check | Before any commit |
-| `export-summary.ps1` | Regenerate `INDEX.md` + `dist/summary.json` | After closing a sample or editing frontmatter |
+| `close_sample.ps1` | Advance slot status, print kind-specific close checklist | After each analysis phase |
+| `validate.ps1` | Structural integrity check (13+ checks, kind-aware) | Before any commit |
+| `export-summary.ps1` | Regenerate `INDEX.md` + `dist/summary.json` + `dist/portfolio.json` | After closing an engagement or editing frontmatter |
 | `redact-check.ps1` | Scan for PII / non-VM paths in .md files | Before any commit |
 | `strip-exif.ps1` | Strip EXIF metadata from screenshot images | Before committing new screenshots |
 
 ---
 
+## new_engagement.ps1
+
+Creates a full engagement slot across all four phase folders with **kind-specific templates**,
+a `50_screenshots/sample_XX/` folder, and a tracker CSV row.
+
+**`-Kind` parameter** selects the engagement type:
+
+| Kind | 01_static template | 02_dynamic template | Use case |
+|------|--------------------|---------------------|---------|
+| `file` (default) | Static triage (DIE/PEStudio/CFF/HxD) | Procmon, process tree, network | Malware file analysis |
+| `ctf` | Recon/enumeration log | Solve attempt / exploit log | HackTheBox, TryHackMe, CTF events |
+| `lab` | Procedure / step log | Results / objectives completion | Courses, training labs |
+| `hunt` | Data collection queries | Timeline / false-positive triage | Threat hunting exercises |
+
+```powershell
+# File analysis -- PE (default)
+powershell -ExecutionPolicy Bypass -File .\30_scripts\new_engagement.ps1 -NextNumber 7
+
+# File analysis -- Office macro
+powershell -ExecutionPolicy Bypass -File .\30_scripts\new_engagement.ps1 -NextNumber 8 -Kind file -Type Office
+
+# CTF challenge
+powershell -ExecutionPolicy Bypass -File .\30_scripts\new_engagement.ps1 -NextNumber 9 -Kind ctf -Title "HTB -- Blunder"
+
+# Training lab
+powershell -ExecutionPolicy Bypass -File .\30_scripts\new_engagement.ps1 -NextNumber 10 -Kind lab -Title "TCM PEH Module 8"
+
+# Threat hunt
+powershell -ExecutionPolicy Bypass -File .\30_scripts\new_engagement.ps1 -NextNumber 11 -Kind hunt -Title "Hunt: LSASS Access"
+```
+
+**Parameters:**
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `-NextNumber` | required | Slot number (1-99) |
+| `-Kind` | `file` | `file`, `ctf`, `lab`, `hunt` |
+| `-Type` | `PE` | For `file` kind: `PE`, `Office`, `Script`, `Archive` |
+| `-Title` | auto | Short title (especially useful for ctf/lab/hunt) |
+| `-Analyst` | `Surrplexie` | Analyst name in frontmatter |
+
+**Files created:**
+- `00_original/sample_XX.md` -- acquisition receipt or brief
+- `01_static/sample_XX.md` -- kind-specific phase 2 template
+- `02_dynamic/sample_XX.md` -- kind-specific phase 3 template
+- `03_findings/sample_XX.md` -- YAML frontmatter with `engagement_kind` + seeded fields
+- `50_screenshots/sample_XX/SHOT_INDEX.txt` -- screenshot map
+- `samples_tracker.csv` -- new row with `engagement_kind`, `date_started`, status
+
+---
+
 ## new_sample.ps1
+
+Backward-compatible alias. Calls `new_engagement.ps1 -Kind file` with the same
+parameters. Existing commands and docs using `new_sample.ps1` continue to work.
+For all engagement types, prefer `new_engagement.ps1` directly.
 
 Creates a full sample slot across all four phase folders with **type-specific templates**,
 a `50_screenshots/sample_XX/` folder, and a tracker CSV row.
@@ -119,6 +176,70 @@ fill Notes columns, then run `close_sample.ps1 -Status dynamic`.
 
 ---
 
+## ingest-events.ps1
+
+Reads a **SIEM or Sysmon event CSV export** and writes structured Markdown tables and
+IOC candidates into a hunt engagement's `02_dynamic` file and `40_iocs/indicators.csv`.
+
+Designed for `hunt` kind engagements. Works with CSV exports from Splunk, Elastic, or
+a direct Sysmon evtx-to-CSV conversion.
+
+**What it extracts:**
+- Process creation timeline (Sysmon Event 1 or equivalent)
+- Network connection events (Sysmon Event 3)
+- File create/write events (Sysmon Event 11)
+- Registry events (Sysmon Event 12/13)
+- Process access events (Sysmon Event 10 -- LSASS access)
+- IOC candidates (suspicious hashes, IPs, file paths, process chains)
+
+**Expected CSV columns (flexible -- auto-detected):**
+`TimeGenerated`, `EventID`, `Computer`, `Image`, `CommandLine`, `ParentImage`,
+`TargetImage`, `GrantedAccess`, `DestinationIp`, `DestinationPort`, `TargetFilename`
+
+```powershell
+# Basic: full CSV, hunt engagement sample_11
+powershell -ExecutionPolicy Bypass -File .\30_scripts\ingest-events.ps1 `
+    -SampleId sample_11 `
+    -EventCsv "C:\analysis\sysmon_export.csv"
+
+# Filter to specific hosts
+powershell -ExecutionPolicy Bypass -File .\30_scripts\ingest-events.ps1 `
+    -SampleId sample_11 `
+    -EventCsv "C:\analysis\sysmon_export.csv" `
+    -HostFilter "WRK-04,WRK-07"
+
+# Filter by EventID (comma-separated)
+powershell -ExecutionPolicy Bypass -File .\30_scripts\ingest-events.ps1 `
+    -SampleId sample_11 `
+    -EventCsv "C:\analysis\sysmon_export.csv" `
+    -EventIdFilter "1,3,10,11"
+
+# Dry run: preview output without writing
+powershell -ExecutionPolicy Bypass -File .\30_scripts\ingest-events.ps1 `
+    -SampleId sample_11 `
+    -EventCsv "C:\analysis\sysmon_export.csv" `
+    -DryRun
+```
+
+**Parameters:**
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `-SampleId` | required | e.g. `sample_11` or bare `11` |
+| `-EventCsv` | required | Full path to SIEM/Sysmon CSV export |
+| `-HostFilter` | (all) | Comma-separated hostnames to focus on |
+| `-EventIdFilter` | (all) | Comma-separated Sysmon EventIDs to include |
+| `-MaxRows` | 50 | Max rows per Markdown table before truncation |
+| `-DryRun` | off | Print output only, modify nothing |
+| `-SkipIocAppend` | off | Skip appending candidates to indicators.csv |
+| `-Root` | auto | Repo root path |
+
+**After running:** Review the appended tables in `02_dynamic/sample_XX.md`, remove noise,
+annotate TP/FP in the "False positive triage" section, then run
+`close_sample.ps1 -SampleId sample_11 -Status analyzing`.
+
+---
+
 ## close_sample.ps1
 
 Advances a sample's lifecycle status in `samples_tracker.csv` and prints a phase-specific
@@ -149,8 +270,9 @@ powershell -ExecutionPolicy Bypass -File .\30_scripts\close_sample.ps1 -SampleId
 
 ## validate.ps1
 
-Runs 10 structural checks against the repo and `samples_tracker.csv`. Exits 0 if
-all checks pass (WARNs allowed) or 1 if any FAIL.
+Runs 13+ structural checks against the repo and `samples_tracker.csv`. Kind-aware:
+some checks (SHA256, IOC cross-reference) apply only to `file` kind engagements.
+Exits 0 if all checks pass (WARNs allowed) or 1 if any FAIL.
 
 ```powershell
 # Standard run
@@ -161,36 +283,55 @@ powershell -ExecutionPolicy Bypass -File .\30_scripts\validate.ps1 -FailOnWarn
 ```
 
 **Checks:**
-1. `samples_tracker.csv` schema (required columns)
+1. `samples_tracker.csv` schema (required columns including `engagement_kind`)
 2. All four phase `.md` files exist for non-empty slots
-3. SHA256 populated for non-empty slots
+3. SHA256 populated for `file` kind non-empty slots (WARN for other kinds)
 4. Phase files have substantive content (>15 lines)
 5. `03_findings/sample_XX.md` has YAML frontmatter
-6. SHA256 in tracker matches SHA256 in frontmatter
-7. `40_iocs/indicators.csv` schema and sample_id cross-reference
+6. SHA256 in tracker matches SHA256 in frontmatter (`file` kind only)
+7. `40_iocs/indicators.csv` schema and sample_id cross-reference (`file` kind only)
 8. Orphan phase `.md` files with no tracker row
 9. Forbidden extension scan (`.exe`, `.dll`, `.pcap`, `.iso`, etc.)
 10. `50_screenshots/sample_XX/` folder exists for non-empty slots
+11. `schema_version` field present in all active findings files (accepts 1 or 2)
+12. Secret / flag pattern scan (warns on raw CTF flags or credential-like patterns in .md files)
+13. `engagement_kind` field present and non-blank for all active tracker rows
 
 ---
 
 ## export-summary.ps1
 
 Parses YAML frontmatter from all `03_findings/sample_XX.md` files, merges with
-`samples_tracker.csv` and IOC counts, and writes two outputs:
+`samples_tracker.csv` and IOC counts, and writes three outputs:
 
-- `INDEX.md` (repo root) -- committed, human-readable sample index table
-- `dist/summary.json` -- gitignored machine-readable dump
+- `INDEX.md` (repo root) -- committed human-readable index with per-kind sections
+- `dist/summary.json` -- gitignored machine-readable dump (schema_version: 2)
+- `dist/portfolio.json` -- gitignored portfolio slice (only `public_writeup_safe: true` rows)
 
 ```powershell
 # Full export
 powershell -ExecutionPolicy Bypass -File .\30_scripts\export-summary.ps1
 
-# Skip the JSON (only regenerate INDEX.md)
+# Skip all JSON (only regenerate INDEX.md)
 powershell -ExecutionPolicy Bypass -File .\30_scripts\export-summary.ps1 -SkipJson
+
+# Skip portfolio.json only
+powershell -ExecutionPolicy Bypass -File .\30_scripts\export-summary.ps1 -SkipPortfolio
 ```
 
-Run this any time you update frontmatter or finish a sample to keep `INDEX.md` current.
+**INDEX.md sections generated:**
+- Summary table with per-kind counts (file, ctf, lab, hunt)
+- All Engagements flat table (Kind, Platform, Outcome)
+- File Analyses (with IOC count, MITRE techniques, verdict)
+- CTF Write-ups (with Platform, Category, Difficulty, Solved)
+- Labs (with Course, Module, Objectives Met)
+- Threat Hunts (with Hypothesis summary, Detections Found)
+- Cross-reference: By Skill (skills field, all kinds)
+- Cross-reference: By Platform (ctf/lab kinds)
+- Cross-reference: By MITRE Technique (file kind)
+- Reserve Slots
+
+Run this any time you update frontmatter or finish an engagement to keep `INDEX.md` current.
 
 ---
 
@@ -305,12 +446,13 @@ Versioned JSON Schema contracts for two machine-readable formats:
 | `schema/summary.schema.json` | Versioned envelope and record structure for `dist/summary.json` |
 | `schema/CHANGELOG.md` | History of changes and migration guide |
 
-**Current version: schema_version 1.**
+**Current version: schema_version 2.**
 
-Every active findings file must include `schema_version: 1` in its YAML frontmatter.
-`validate.ps1` check 11 enforces this. `export-summary.ps1` wraps `dist/summary.json`
-in a `schema_version: 1` envelope. See `schema/CHANGELOG.md` for the upgrade process
-when fields change.
+- `file` kind findings use `schema_version: 1` or `2`.
+- `ctf`, `lab`, `hunt` kind findings use `schema_version: 2`.
+- `validate.ps1` check 11 enforces presence (accepts 1 or 2).
+- `export-summary.ps1` wraps `dist/summary.json` in a `schema_version: 2` envelope.
+- See `schema/CHANGELOG.md` for migration notes.
 
 ---
 
@@ -320,18 +462,28 @@ when fields change.
 # 0. One-time hook install (run once after clone)
 powershell -ExecutionPolicy Bypass -File .\30_scripts\install-hooks.ps1
 
-# 1. Create and analyze a sample
-powershell -ExecutionPolicy Bypass -File .\30_scripts\new_sample.ps1 -NextNumber 7
+# 1a. Create a file analysis slot
+powershell -ExecutionPolicy Bypass -File .\30_scripts\new_engagement.ps1 -NextNumber 7 -Kind file
 
-# ... (fill in phase files, take screenshots, run static/dynamic analysis) ...
+# 1b. Create a CTF slot
+powershell -ExecutionPolicy Bypass -File .\30_scripts\new_engagement.ps1 -NextNumber 8 -Kind ctf -Title "HTB -- Blunder"
 
-# 2. Strip EXIF from screenshots
+# 1c. Create a hunt slot
+powershell -ExecutionPolicy Bypass -File .\30_scripts\new_engagement.ps1 -NextNumber 9 -Kind hunt -Title "Hunt: LSASS Access"
+
+# ... fill in phase files, take screenshots, run analysis ...
+
+# 2. Strip EXIF from screenshots (all kinds)
 powershell -ExecutionPolicy Bypass -File .\30_scripts\strip-exif.ps1 -SampleId sample_07 -SkipBackup
 
-# 3. Redaction check
+# 3. Redaction check (all kinds)
 powershell -ExecutionPolicy Bypass -File .\30_scripts\redact-check.ps1 -SampleId sample_07
 
-# 4. Close the sample and regenerate index
+# 4. Close the engagement and regenerate index
+#    File:  -Status done
+#    CTF:   -Status solved  (or writeup_done)
+#    Lab:   -Status reviewed
+#    Hunt:  -Status closed
 powershell -ExecutionPolicy Bypass -File .\30_scripts\close_sample.ps1 -SampleId sample_07 -Status done -RunValidate -RunExport
 
 # 5. Commit (pre-push hook runs validate + redact-check automatically on push)

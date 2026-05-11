@@ -20,6 +20,8 @@
      11.  Schema version             - frontmatter schema_version valid for kind.
      12.  Secret / flag scan         - warns if CTF/lab files contain raw flag patterns.
      13.  Kind field presence        - warns if engagement_kind is missing in tracker.
+     14.  CTF solve depth            - warns if solved CTF has thin/placeholder 02_dynamic.
+     15.  Skills field population    - warns if closed non-file engagement has no skills[].
 
     Exit code 0 = all checks passed (WARNs allowed).
     Exit code 1 = one or more FAIL checks.
@@ -365,6 +367,85 @@ foreach ($f in $mdFiles) {
 }
 if (-not $flagIssues) {
     Write-Pass "No raw flag or credential patterns found in committed markdown files"
+}
+
+# ---------------------------------------------------------------------------
+# CHECK 14: CTF methodology depth -- solved rows should have non-skeleton 02_dynamic
+# ---------------------------------------------------------------------------
+Write-Section "14. CTF solve depth check"
+
+$solvedCtfRows = @($nonEmptyRows | Where-Object {
+    $k = Get-EngagementKind -Row $_ -Content $null
+    $s = $_.status.Trim().ToLower()
+    $k -eq 'ctf' -and $s -in @('solved', 'writeup_done')
+})
+
+if ($solvedCtfRows.Count -eq 0) {
+    Write-Info "No solved CTF engagements to check."
+} else {
+    $ctfDepthIssues = $false
+    foreach ($row in $solvedCtfRows) {
+        $id = $row.sample_id.Trim()
+        $dynPath = Join-Path $Root "02_dynamic\$id.md"
+        if (Test-Path $dynPath) {
+            $dynContent = Get-Content $dynPath -Raw -Encoding UTF8 -ErrorAction SilentlyContinue
+            $placeholderCount = ([regex]::Matches($dynContent, 'PENDING|TODO|_Not captured_|<FILL')).Count
+            $lineCount = ($dynContent -split "`r`n|`n").Count
+            if ($lineCount -lt 30) {
+                Write-Warn "$id : 02_dynamic is thin ($lineCount lines) for a solved CTF -- add solve steps"
+                $ctfDepthIssues = $true
+            } elseif ($placeholderCount -gt 5) {
+                Write-Warn "$id : 02_dynamic has $placeholderCount unfilled placeholders for a solved CTF"
+                $ctfDepthIssues = $true
+            } else {
+                Write-Pass "$id : 02_dynamic has adequate depth for a solved CTF"
+            }
+        }
+    }
+    if (-not $ctfDepthIssues) {
+        Write-Pass "All solved CTF engagements have adequate 02_dynamic depth"
+    }
+}
+
+# ---------------------------------------------------------------------------
+# CHECK 15: Skills field populated for closed/solved/done non-file engagements
+# ---------------------------------------------------------------------------
+Write-Section "15. Skills field population check"
+
+$closedNonFileRows = @($nonEmptyRows | Where-Object {
+    $k = Get-EngagementKind -Row $_ -Content $null
+    $s = $_.status.Trim().ToLower()
+    $k -ne 'file' -and $s -in @('done', 'solved', 'writeup_done', 'reviewed', 'closed', 'objectives_met')
+})
+
+if ($closedNonFileRows.Count -eq 0) {
+    Write-Info "No closed non-file engagements to check."
+} else {
+    $skillsIssues = $false
+    foreach ($row in $closedNonFileRows) {
+        $id = $row.sample_id.Trim()
+        $findPath = Join-Path $Root "03_findings\$id.md"
+        if (Test-Path $findPath) {
+            $fContent = Get-Content $findPath -Raw -Encoding UTF8 -ErrorAction SilentlyContinue
+            $skillsMatch = $fContent -match '(?m)^skills\s*:'
+            if (-not $skillsMatch) {
+                Write-Warn "$id : no skills: field in frontmatter for a closed non-file engagement"
+                $skillsIssues = $true
+            } else {
+                # Check if it has any actual values (not just an empty list)
+                $skillsBlock = if ($fContent -match '(?s)skills\s*:\s*\r?\n((\s+-\s+\S+\r?\n)+)') { $Matches[1] } else { '' }
+                if ([string]::IsNullOrWhiteSpace($skillsBlock)) {
+                    Write-Warn "$id : skills: field appears empty for a closed non-file engagement"
+                    $skillsIssues = $true
+                } else {
+                    Write-Pass "$id : skills field populated"
+                }
+            }
+        }
+    }
+    if (-not $skillsIssues) {
+        Write-Pass "All closed non-file engagements have skills field populated"
+    }
 }
 
 # ---------------------------------------------------------------------------

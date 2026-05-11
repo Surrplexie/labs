@@ -257,3 +257,281 @@ encrypted blob consistent with stolen credential data. The sample exhibits a beh
 profile aligned with commodity **infostealers** — specifically credential harvesting,
 persistence, and C2 exfiltration — though definitive family attribution would require
 disassembly of the unpacked image.
+
+---
+
+## Complete example -- CTF findings (writeup)
+
+**Engagement:** `sample_EX` -- HackTheBox "Blunder" (Retired), Linux, Web.
+
+---
+
+`yaml
+---
+schema_version: 2
+engagement_kind: ctf
+sample_id: sample_EX
+title: "HackTheBox -- Blunder (Retired)"
+analyst: Surrplexie
+date_started: "2026-05-11"
+date_closed: "2026-05-11"
+platform: HackTheBox
+category: Web
+difficulty: Easy
+points: 20
+solved: true
+public_writeup_safe: false
+outcome: "User + Root flags obtained. Full chain: CeWL wordlist -> Bludit brute bypass -> CVE-2019-16113 upload RCE -> Hugo credential reuse -> CVE-2019-14287 sudo bypass."
+skills:
+  - web-enumeration
+  - cms-exploitation
+  - credential-cracking
+  - privilege-escalation
+  - sudo-bypass
+confidence: high
+---
+`
+
+---
+
+### Summary
+
+| Field | Value |
+|-------|-------|
+| Platform | HackTheBox |
+| Box | Blunder |
+| Difficulty | Easy |
+| OS | Linux (Ubuntu 20.04) |
+| CVEs exploited | CVE-2019-16113 (Bludit 3.9.2 directory traversal), CVE-2019-14287 (sudo 1.8.27 bypass) |
+| Time to user | ~1 h 20 min |
+| Time to root | ~1 h 45 min |
+
+---
+
+### Methodology
+
+1. **Recon:** nmap revealed only port 80. gobuster found /admin, /robots.txt, /todo.txt.
+2. **Username leak:** `/todo.txt` mentioned "fergus" must change password.
+3. **Version fingerprint:** Bludit 3.9.2 identified via page source.
+4. **Custom wordlist:** CeWL generated 249-word wordlist from site; brute-force bypass via X-Forwarded-For rotation (EDB-48942).
+5. **Credential cracked:** fergus:RolandDeschain.
+6. **RCE:** CVE-2019-16113 directory traversal image upload (Metasploit) -> www-data shell.
+7. **Lateral:** Found sha1 hash for hugo in bludit-3.10.0a user DB; cracked -> Password120; `su hugo` -> user flag.
+8. **Root:** `sudo -l` showed `(ALL, !root) NOPASSWD: /bin/bash`; CVE-2019-14287 `sudo -u#-1 /bin/bash` -> root.
+
+---
+
+### Skills demonstrated
+
+| Skill | How demonstrated |
+|-------|----------------|
+| Web enumeration | gobuster + manual robots.txt/todo.txt review |
+| CeWL wordlist generation | Site-specific password list for targeted brute-force |
+| CVE research and exploitation | Identified two applicable CVEs for the exact version |
+| Hash cracking | sha1 cracked with rockyou via hashcat -m 100 |
+| Privilege escalation | CVE-2019-14287 sudo version-specific bypass |
+
+---
+
+### What you proved
+
+- **Enumeration depth matters:** Default gobuster wordlists missed /todo.txt (found via robots.txt -- enumeration chain).
+- **CMS fingerprinting:** Version in source comment led directly to applicable CVE.
+- **Sudo version matters:** Patched in sudo 1.8.28; identical config on a patched system would be safe.
+- **Credential reuse between CMS versions:** Hugo's hash existed in the newer Bludit install, not the exploited 3.9.2 instance.
+
+---
+
+### Public-safe flag proof
+
+> **(Redacted -- `public_writeup_safe: false`. Update to true and add proof of both flags once box is retired and HTB allows public writeups.)**
+
+---
+
+### Cross-references
+
+[brief](../00_original/sample_EX.md) | [recon](../01_static/sample_EX.md) | [solve](../02_dynamic/sample_EX.md) | [screenshots](../50_screenshots/sample_EX/)
+
+---
+
+## Complete example -- Lab findings (reflection)
+
+**Engagement:** `sample_EX` -- TCM Security Practical Ethical Hacking, Module 8 (Active Directory).
+
+---
+
+`yaml
+---
+schema_version: 2
+engagement_kind: lab
+sample_id: sample_EX
+title: "TCM Security PEH -- Module 8: Active Directory Attacks"
+analyst: Surrplexie
+date_started: "2026-05-11"
+date_closed: "2026-05-11"
+platform: TCM Security
+course: "Practical Ethical Hacking"
+module: "8 -- Active Directory Attacks"
+environment: "Local VMware lab (Windows Server 2019 DC + 2x Windows 10 workstations)"
+objectives:
+  - "Capture NTLMv2 hash via LLMNR poisoning"
+  - "Crack captured hash with hashcat"
+  - "Enumerate SMB shares as authenticated user"
+  - "Demonstrate pass-the-hash lateral move"
+objectives_met: true
+outcome: "All four objectives met. LLMNR poisoning, NTLMv2 cracking, SMB enumeration, and pass-the-hash all demonstrated end-to-end in live lab."
+skills:
+  - llmnr-poisoning
+  - ntlmv2-capture
+  - hash-cracking
+  - smb-enumeration
+  - pass-the-hash
+  - lateral-movement
+confidence: high
+---
+`
+
+---
+
+### Objectives met
+
+All 4 / 4 objectives met. See 02_dynamic for full evidence.
+
+---
+
+### Reflection
+
+**What went well:**
+- Responder captured the hash immediately after simulating the victim browsing to a non-existent share.
+- hashcat cracked Password1 from rockyou in under 15 seconds -- reinforces why password policies matter.
+- crackmapexec pass-the-hash showed lateral movement across hosts -- visually impactful.
+
+**What was harder than expected:**
+- Hash format confusion (NTLMv2 is -m 5600 not -m 1000). Resolved after reading the hash structure more carefully.
+- Responder and crackmapexec cannot both bind 445 simultaneously -- had to stop Responder before enumerating.
+
+**What I would improve next time:**
+- Set up Impacket secretsdump to demonstrate domain-level credential dumping after getting local admin.
+- Try BloodHound AD enumeration to visualize the attack path graphically.
+
+---
+
+### Skills demonstrated
+
+| Skill | Evidence |
+|-------|---------|
+| LLMNR/NBT-NS poisoning | Responder output in 01_static |
+| NTLMv2 hash capture | fcastle hash captured live |
+| Hash cracking (NTLMv2) | hashcat -m 5600 -- Password1 cracked |
+| SMB enumeration | SYSVOL and NETLOGON READ confirmed |
+| Pass-the-hash | peterparker Pwn3d! on WORKSTATION-02 |
+
+---
+
+### Cross-references
+
+[setup](../00_original/sample_EX.md) | [step-log](../01_static/sample_EX.md) | [results](../02_dynamic/sample_EX.md) | [screenshots](../50_screenshots/sample_EX/)
+
+---
+
+## Complete example -- Hunt findings (outcome)
+
+**Engagement:** `sample_EX` -- Internal hunt: LSASS credential access via Mimikatz-style tool.
+
+---
+
+`yaml
+---
+schema_version: 2
+engagement_kind: hunt
+sample_id: sample_EX
+title: "Hunt: LSASS Credential Access via Mimikatz-Style Tooling"
+analyst: Surrplexie
+date_started: "2026-04-11"
+date_closed: "2026-05-11"
+hypothesis: "An attacker or red-team tool accessed LSASS memory on endpoints in the last 30 days to dump credentials."
+data_sources:
+  - "Sysmon Event 10 (ProcessAccess)"
+  - "Sysmon Event 1 (Process creation)"
+  - "Sysmon Event 11, 3, 23"
+  - "Security Event 4688"
+timebox: "30 days (2026-04-11 to 2026-05-11)"
+detections_found: 1
+ioc_count: 5
+outcome: "Hypothesis confirmed. One host (WRK-04) exhibited LSASS memory access from a non-system binary (svch0st.exe) with PROCESS_ALL_ACCESS, consistent with credential dumping. Full attack chain reconstructed. IOCs extracted. Detection rules drafted."
+confidence: high
+skills:
+  - threat-hunting-methodology
+  - sysmon-analysis
+  - elastic-siem
+  - timeline-reconstruction
+  - ioc-extraction
+  - sigma-rule-writing
+---
+`
+
+---
+
+### Outcome summary
+
+**Hypothesis status:** Confirmed -- one host affected (WRK-04).
+
+**Attack chain reconstructed:**
+
+`
+winword.exe (Q1_Report.docx -- macro enabled)
+  -> powershell.exe -enc <base64 dropper>
+    -> C:\Windows\Temp\svch0st.exe (written)
+      -> lsass.exe accessed 0x1FFFFF (credential dump)
+      -> C:\Windows\Temp\kr.tmp (dump file, deleted)
+      -> Outbound 443 to 185.220.x.x (exfil)
+      -> self-delete
+`
+
+---
+
+### Detections found
+
+| Host | Detection | Confidence | Event |
+|------|----------|-----------|-------|
+| WRK-04 | svch0st.exe LSASS 0x1FFFFF | High | Sysmon 10 |
+| WRK-04 | winword -> powershell -enc chain | High | Sysmon 1 |
+| WRK-04 | .exe drop in Temp from powershell | High | Sysmon 11 |
+| WRK-04 | Outbound 443 non-browser to 185.220.x.x | Medium | Sysmon 3 |
+
+---
+
+### IOC table
+
+| Type | Value | Confidence | Action |
+|------|-------|-----------|--------|
+| sha256 | a1b2c3... (svch0st.exe) | High | EDR block |
+| file_path | C:\Windows\Temp\svch0st.exe | High | Alert rule |
+| process_chain | winword.exe -> powershell.exe -enc -> dropper | High | Sigma rule |
+| ip | 185.220.x.x | Medium | Firewall deny + threat intel check |
+| file_path | C:\Windows\Temp\kr.tmp | Medium | Forensic artifact |
+
+---
+
+### Recommendations
+
+1. Isolate WRK-04 pending IR team review and reimaging.
+2. Deploy Sigma rule for macro -> encoded PS chain.
+3. Add EDR block for svch0st.exe hash.
+4. Block 185.220.x.x range at perimeter firewall.
+5. Enable LSASS Protected Process Light (PPL) on all endpoints.
+6. Hunt for additional hosts with the same parent-chain pattern across the full estate.
+
+---
+
+### What you proved
+
+- LSASS access hunting via Sysmon Event 10 with GrantedAccess filtering is high signal:low noise when combined with process path and name checks.
+- Process-name leet-spelling (svch0st vs svchost) is reliably caught by path analysis -- the real svchost.exe always runs from System32.
+- Timeline reconstruction from Sysmon across 5+ event types gives a complete attack chain from initial execution to exfil without needing EDR.
+
+---
+
+### Cross-references
+
+[brief](../00_original/sample_EX.md) | [collection](../01_static/sample_EX.md) | [analysis](../02_dynamic/sample_EX.md) | [screenshots](../50_screenshots/sample_EX/)

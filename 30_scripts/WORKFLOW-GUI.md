@@ -122,45 +122,66 @@ Releases, **compare hashes** to published values before running.
 Open **Settings**, set **Analyst name**, click **Save Settings**. Settings are stored in
 `30_scripts/.workflow_gui_config.json` on your machine (that file is gitignored).
 
-### Step 3 -- New Sample tab (example data)
+### Step 3 -- New Engagement tab (example data)
 
-These values are **fictional / illustrative**; replace with data from **your** MalwareBazaar
-(or other) page for the sample you are documenting.
+Select your **Engagement kind** first -- the form adapts dynamically:
 
-| Field | Example (illustrative only) |
-|--------|------------------------------|
+| Kind | Fields shown |
+|------|-------------|
+| `file` | Sample type (PE/Office/Script/Archive), SHA256, hashes, MB URL, verdict, MITRE, tags |
+| `ctf` | Platform (HTB/THM/etc.), category, difficulty, title |
+| `lab` | Platform (course name), title/module |
+| `hunt` | Title (hypothesis summary) |
+
+**File-kind example** (illustrative only -- replace with your real data):
+
+| Field | Example |
+|--------|---------|
 | **Sample #** | Click **Auto-detect**, or type a number (e.g. `7` for `sample_07`). |
 | **Analyst** | Your handle or name. |
+| **Engagement kind** | `file` |
+| **Sample type** | `PE` |
 | **Date acquired** | `2026-05-11` |
-| **Date analyzed** | Same day or update when analysis finishes. |
-| **First seen (Bazaar UTC)** | Paste from the intel page. |
-| **SHA256** | Full 64-character hex; when valid, **MB URL** may auto-fill. |
-| **SHA1 / MD5** | Paste from the same page. |
+| **SHA256** | Full 64-character hex; MB URL may auto-fill. |
+| **SHA1 / MD5** | Paste from the same intel page. |
 | **Filename (claimed)** | e.g. `Updater_v2.211.exe` |
-| **MIME type** | e.g. `application/x-dosexec` |
-| **Size (bytes)** | e.g. `4218880` |
-| **MB URL** | Confirm it matches the sample you intend. |
-| **Verdict** | Often start with `unknown` or `suspicious`; refine later. |
+| **Verdict** | Often `unknown` or `suspicious` initially. |
 | **Confidence** | Often `low` until static/dynamic work is done. |
-| **Family guess** | Short working label, e.g. `NSIS installer / fake alert`. |
-| **Flags** | Enable **Procmon run** / **Dynamic complete** when true. |
 | **Tags** | Comma-separated, e.g. `nsis, fake-alert, installer` |
-| **MITRE IDs** | Comma-separated, e.g. `T1036, T1027, T1583.006` |
-| **YARA rows** | Optional; one markdown table row per line with pipe separators. |
+| **MITRE IDs** | Comma-separated, e.g. `T1036, T1027` |
+
+**CTF-kind example:**
+
+| Field | Example |
+|--------|---------|
+| **Sample #** | e.g. `8` |
+| **Engagement kind** | `ctf` |
+| **Platform** | `HackTheBox` |
+| **Category** | `Web` |
+| **Difficulty** | `Easy` |
+| **Title** | `HTB -- Blunder` |
+
+**Hunt-kind example:**
+
+| Field | Example |
+|--------|---------|
+| **Sample #** | e.g. `9` |
+| **Engagement kind** | `hunt` |
+| **Title** | `Hunt: LSASS Access via Mimikatz` |
 
 ### Step 4 -- Create
 
-Click **CREATE SAMPLE**. The GUI writes:
+Click **CREATE ENGAGEMENT** (button label reflects selected kind). The GUI calls
+`new_engagement.ps1` with the appropriate `-Kind` flag and writes:
 
 - `00_original/sample_XX.md`
 - `01_static/sample_XX.md`
 - `02_dynamic/sample_XX.md`
-- `03_findings/sample_XX.md` (with YAML frontmatter)
+- `03_findings/sample_XX.md` (with YAML frontmatter, `engagement_kind` set)
 - `50_screenshots/sample_XX/SHOT_INDEX.txt` (if missing)
-- Updates `samples_tracker.csv` toward `queued` for that slot
+- Updates `samples_tracker.csv` with kind, title, and `date_started`
 
-Then replace remaining `PENDING` placeholders in the Markdown as you perform real work
-in your VM.
+Then replace remaining `PENDING` placeholders in the Markdown as you perform real work.
 
 **Disclaimer reminder:** The GUI writes files **you** asked it to write. Review diffs
 before `git commit`. It never substitutes for safe handling of real malware outside an

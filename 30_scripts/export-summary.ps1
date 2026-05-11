@@ -9,31 +9,43 @@
       - INDEX.md at repo root (committed -- human-readable logbook index)
       - dist/summary.json (gitignored -- machine-readable)
 
+    Outputs:
+      - INDEX.md at repo root (committed)
+      - dist/summary.json (gitignored, schema_version: 2)
+      - dist/portfolio.json (gitignored, public_writeup_safe: true rows only)
+
     INDEX.md sections:
-      1.  Summary stats
-      2.  All engagements table (flat, kind column)
-      3.  File analyses (per-kind detail section)
+      1.  Summary stats (per-kind counts)
+      2.  All engagements flat table
+      3.  File analyses
       4.  CTF write-ups
       5.  Labs
       6.  Threat hunts
-      7.  Cross-reference: by tag
-      8.  Cross-reference: by MITRE technique (file-kind)
-      9.  Reserve slots
+      7.  Cross-reference: by skill (all kinds)
+      8.  Cross-reference: by platform (ctf/lab kinds)
+      9.  Cross-reference: by tag (all kinds)
+     10.  Cross-reference: by MITRE technique (file-kind)
+     11.  Reserve slots
 
 .PARAMETER Root
     Path to the repo root. Defaults to parent of this script's directory.
 
 .PARAMETER SkipJson
-    Skip writing dist/summary.json (INDEX.md still generated).
+    Skip writing dist/summary.json and dist/portfolio.json (INDEX.md still generated).
+
+.PARAMETER SkipPortfolio
+    Skip writing dist/portfolio.json only (summary.json still written if -SkipJson not set).
 
 .EXAMPLE
     powershell -ExecutionPolicy Bypass -File .\30_scripts\export-summary.ps1
     powershell -ExecutionPolicy Bypass -File .\30_scripts\export-summary.ps1 -SkipJson
+    powershell -ExecutionPolicy Bypass -File .\30_scripts\export-summary.ps1 -SkipPortfolio
 #>
 
 param(
-    [string]$Root     = (Split-Path $PSScriptRoot -Parent),
-    [switch]$SkipJson
+    [string]$Root         = (Split-Path $PSScriptRoot -Parent),
+    [switch]$SkipJson,
+    [switch]$SkipPortfolio
 )
 
 $ErrorActionPreference = 'Stop'
@@ -260,6 +272,56 @@ if (-not $SkipJson) {
 }
 
 # ---------------------------------------------------------------------------
+# Output 1b: dist/portfolio.json  (public_writeup_safe: true rows only)
+# ---------------------------------------------------------------------------
+
+if (-not $SkipJson -and -not $SkipPortfolio) {
+    $distDir = Join-Path $Root 'dist'
+    if (-not (Test-Path $distDir)) { New-Item -ItemType Directory -Path $distDir | Out-Null }
+    $portfolioPath = Join-Path $distDir 'portfolio.json'
+
+    # Rebuild by re-reading public_writeup_safe from frontmatter
+    $portfolioRecs = [System.Collections.Generic.List[hashtable]]::new()
+    foreach ($rec in $activeRecs) {
+        $sid  = $rec['sample_id']
+        $fPath = Join-Path $Root "03_findings\$sid.md"
+        $fm2   = Read-Frontmatter -FilePath $fPath
+        $safe  = if ($fm2.ContainsKey('public_writeup_safe')) { $fm2['public_writeup_safe'] } else { 'false' }
+        if ($safe -eq 'true') {
+            # Include only public-safe fields
+            $pub = [ordered]@{
+                sample_id       = $sid
+                engagement_kind = $rec['engagement_kind']
+                title           = $rec['name_tag']
+                platform        = $rec['platform']
+                date_closed     = $rec['date_closed']
+                skills          = $rec['skills']
+                outcome         = $rec['outcome']
+                confidence      = $rec['confidence']
+                # kind-specific
+                verdict         = $rec['verdict']
+                category        = $rec['category']
+                difficulty      = $rec['difficulty']
+                solved          = $rec['solved']
+                detections_found = $rec['detections_found']
+                objectives_met  = $rec['objectives_met']
+            }
+            $portfolioRecs.Add($pub)
+        }
+    }
+
+    $portfolioEnvelope = [ordered]@{
+        schema_version = 2
+        generated_at   = (Get-Date -Format 'yyyy-MM-ddTHH:mm:ssZ')
+        description    = 'Public-safe portfolio slice. Only rows with public_writeup_safe: true.'
+        record_count   = $portfolioRecs.Count
+        records        = @($portfolioRecs)
+    }
+    $portfolioEnvelope | ConvertTo-Json -Depth 6 | Set-Content -Path $portfolioPath -Encoding UTF8
+    Write-Host "[export] Wrote $portfolioPath ($($portfolioRecs.Count) public-safe records)" -ForegroundColor Green
+}
+
+# ---------------------------------------------------------------------------
 # Output 2: INDEX.md
 # ---------------------------------------------------------------------------
 
@@ -414,6 +476,67 @@ if ($huntRecs.Count -gt 0) {
     }
 
     $null = $sb.AppendLine('')
+    $null = $sb.AppendLine('---')
+    $null = $sb.AppendLine('')
+}
+
+# ---- Cross-reference: By Skill ----
+$allSkills = @()
+foreach ($r in $activeRecs) { $allSkills += $r['skills'] }
+$allSkills = @($allSkills | Where-Object { $_ -ne '' } | Select-Object -Unique | Sort-Object)
+
+if ($allSkills.Count -gt 0) {
+    $null = $sb.AppendLine('## Cross-Reference: By Skill')
+    $null = $sb.AppendLine('')
+    $null = $sb.AppendLine('> Engagements grouped by demonstrated skill (from ``skills[]`` frontmatter field, all kinds).')
+    $null = $sb.AppendLine('')
+
+    foreach ($skill in ($allSkills | Sort-Object)) {
+        $recsWithSkill = @($activeRecs | Where-Object { $_['skills'] -contains $skill })
+        if ($recsWithSkill.Count -eq 0) { continue }
+
+        $null = $sb.AppendLine("### ``$skill``")
+        $null = $sb.AppendLine('')
+        foreach ($r in $recsWithSkill) {
+            $sid = $r['sample_id']
+            $nt  = if ($r['name_tag']) { $r['name_tag'] } else { '(unset)' }
+            $knd = $r['engagement_kind']
+            $null = $sb.AppendLine("- [``$sid``](03_findings/$sid.md) [$knd] -- $nt")
+        }
+        $null = $sb.AppendLine('')
+    }
+
+    $null = $sb.AppendLine('> See `20_notes/skills-coverage.md` for the full hand-maintained depth tracker.')
+    $null = $sb.AppendLine('')
+    $null = $sb.AppendLine('---')
+    $null = $sb.AppendLine('')
+}
+
+# ---- Cross-reference: By Platform (CTF/Lab kinds) ----
+$platformRecs = @($activeRecs | Where-Object { $_['engagement_kind'] -in @('ctf','lab') -and $_['platform'] -ne '' })
+if ($platformRecs.Count -gt 0) {
+    $platforms = @($platformRecs | ForEach-Object { $_['platform'] } | Select-Object -Unique | Sort-Object)
+
+    $null = $sb.AppendLine('## Cross-Reference: By Platform')
+    $null = $sb.AppendLine('')
+    $null = $sb.AppendLine('> CTF and lab engagements grouped by platform / provider.')
+    $null = $sb.AppendLine('')
+
+    foreach ($plat in $platforms) {
+        $recsWithPlat = @($platformRecs | Where-Object { $_['platform'] -eq $plat })
+        if ($recsWithPlat.Count -eq 0) { continue }
+
+        $null = $sb.AppendLine("### $plat")
+        $null = $sb.AppendLine('')
+        foreach ($r in $recsWithPlat) {
+            $sid = $r['sample_id']
+            $nt  = if ($r['name_tag']) { $r['name_tag'] } else { '(unset)' }
+            $knd = $r['engagement_kind']
+            $null = $sb.AppendLine("- [``$sid``](03_findings/$sid.md) [$knd] -- $nt")
+        }
+        $null = $sb.AppendLine('')
+    }
+
     $null = $sb.AppendLine('---')
     $null = $sb.AppendLine('')
 }

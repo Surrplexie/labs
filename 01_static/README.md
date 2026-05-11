@@ -212,3 +212,307 @@ credential exfiltration.
 | 6 | `shot_006.png` | **PEStudio** | VirusTotal hits, blacklisted imports |
 
 Cross-references: [acquisition](../00_original/sample_EX.md) | [dynamic](../02_dynamic/sample_EX.md) | [findings](../03_findings/sample_EX.md) | [screenshots](../50_screenshots/sample_EX/)
+
+---
+
+## Complete example -- CTF (recon / enumeration)
+
+**Engagement:** `sample_EX` -- HackTheBox "Blunder" (Retired), Linux, web category.
+
+---
+
+### Identity anchor
+
+| Field | Value |
+|-------|-------|
+| Platform | HackTheBox |
+| Box name | Blunder |
+| OS | Linux |
+| IP | 10.10.10.191 |
+| Date started | 2026-05-11 |
+| Analyst | Surrplexie |
+
+---
+
+### Scan results -- nmap
+
+```
+nmap -sC -sV -oA nmap/blunder 10.10.10.191
+```
+
+| Port | State | Service | Version |
+|------|-------|---------|---------|
+| 21/tcp | filtered | ftp | -- |
+| 80/tcp | open | http | Apache 2.4.41 (Ubuntu) |
+| 443/tcp | closed | -- | -- |
+
+No SSH visible on initial scan. FTP filtered (not accessible). Single attack surface: HTTP port 80.
+
+---
+
+### Web enumeration -- gobuster
+
+```bash
+gobuster dir -u http://10.10.10.191 -w /usr/share/seclists/Discovery/Web-Content/common.txt -x php,txt,html -t 40
+```
+
+| Path | Status | Notes |
+|------|--------|-------|
+| `/admin` | 301 | Redirects to `/admin/` |
+| `/robots.txt` | 200 | Discloses `/todo.txt` |
+| `/todo.txt` | 200 | Note from dev: "fergus must change password" -- username leak |
+| `/install.php` | 200 | Bludit CMS install confirmation page |
+| `/bl-content/` | 301 | CMS content directory |
+
+**Findings:**
+- CMS identified as **Bludit** (confirmed via `/bl-content/` structure and footer comment).
+- Username **fergus** leaked via `todo.txt`.
+- No FTP access; no SSH open.
+
+---
+
+### CMS version fingerprinting
+
+Access `http://10.10.10.191/admin/` -- login panel visible.  
+Page source comment: `Bludit version: 3.9.2`
+
+Searched `searchsploit bludit`:
+
+```
+Bludit - Directory Traversal Image File Upload (Metasploit) | php/webapps/47699.rb
+Bludit 3.9.2 - Authentication Bruteforce Mitigation Bypass  | php/webapps/48942.py
+```
+
+**Two applicable exploits for 3.9.2:**  
+1. Brute-force mitigation bypass (need valid password)  
+2. Directory traversal upload (need auth first)
+
+Approach: use brute-force bypass to crack `fergus` account, then use upload exploit for foothold.
+
+---
+
+### Wordlist preparation
+
+Bludit 3.9.2 blocks IPs after 10 failed attempts using X-Forwarded-For rotation bypass.
+Generated custom wordlist with CeWL from the site:
+
+```bash
+cewl -w wordlist.txt -d 2 http://10.10.10.191
+```
+
+Result: 249-word custom list from page content.
+
+---
+
+### Credential attempt table
+
+| Username | Wordlist source | Result |
+|---------|----------------|--------|
+| fergus | cewl output | **HIT** -- password: `RolandDeschain` |
+| admin | cewl output | No match |
+
+Authentication to Bludit admin panel confirmed with `fergus:RolandDeschain`.
+
+---
+
+### Summary (for findings)
+
+Static/recon phase confirmed: **Bludit CMS 3.9.2 on Apache 2.4.41**, one authenticated
+user (`fergus`) with a weak password recoverable from CeWL wordlist. Two CVEs applicable.
+Next phase: exploit directory traversal upload CVE for initial foothold.
+
+---
+
+### Screenshots index
+
+| # | File | Tool | What it shows |
+|---|------|------|---------------|
+| 1 | `shot_001.png` | **nmap** | Open port summary |
+| 2 | `shot_002.png` | **Browser** | Bludit admin login panel |
+| 3 | `shot_003.png` | **curl** | `todo.txt` content, fergus username |
+| 4 | `shot_004.png` | **gobuster** | Directory listing results |
+
+Cross-references: [brief](../00_original/sample_EX.md) | [solve](../02_dynamic/sample_EX.md) | [findings](../03_findings/sample_EX.md) | [screenshots](../50_screenshots/sample_EX/)
+
+---
+
+## Complete example -- Lab (step log)
+
+**Engagement:** `sample_EX` -- TCM Security "Practical Ethical Hacking", Module 8: Active Directory Lab.
+
+---
+
+### Identity anchor
+
+| Field | Value |
+|-------|-------|
+| Platform | TCM Security |
+| Course | Practical Ethical Hacking |
+| Module | 8 -- Active Directory Attacks |
+| Environment | Local VMware lab (DC01 + WORKSTATION-01 + WORKSTATION-02) |
+| Date | 2026-05-11 |
+
+---
+
+### Objectives
+
+- [ ] 1. Perform LLMNR/NBT-NS poisoning to capture NTLMv2 hashes
+- [ ] 2. Crack the captured hash with hashcat
+- [ ] 3. Enumerate SMB shares after authentication
+- [ ] 4. Identify a pass-the-hash opportunity
+- [x] = completed; [ ] = not yet reached
+
+---
+
+### Step 1 -- Set up Responder
+
+**Command:**
+```bash
+sudo responder -I eth0 -dwv
+```
+
+**Expected:** Responder starts listening on all protocols (LLMNR, NBT-NS, MDNS).
+
+**Actual:** Started as expected. Interface `eth0` shows correct lab subnet.
+
+---
+
+### Step 2 -- Trigger LLMNR request
+
+On WORKSTATION-01 (Windows VM), navigated to a non-existent share:
+```
+\\doesnotexist\share
+```
+
+**Expected:** Responder intercepts the LLMNR broadcast and serves a poisoned response.
+
+**Actual:** Within 3 seconds, Responder captured:
+```
+[SMB] NTLMv2-SSP Hash  : MARVEL\fcastle::MARVEL:babb...
+```
+
+Hash captured for user `fcastle`.
+
+---
+
+### Step 3 -- Crack hash with hashcat
+
+Saved hash to `fcastle.hash`, then:
+```bash
+hashcat -m 5600 fcastle.hash /usr/share/wordlists/rockyou.txt
+```
+
+| Field | Value |
+|-------|-------|
+| Hash type | NTLMv2-SSP (`-m 5600`) |
+| Wordlist | rockyou.txt |
+| Result | **Password1** (cracked in 12 seconds) |
+
+---
+
+### Notes / errors encountered
+
+- First attempt used `-m 1000` (NTLM) instead of `-m 5600` (NTLMv2-SSP) -- no results.
+  Corrected after reviewing the hash format (`::` separator is NTLMv2, not plain NTLM).
+- Responder must be stopped before using `crackmapexec`; both bind port 445.
+
+---
+
+### Screenshots index
+
+| # | File | Tool | What it shows |
+|---|------|------|---------------|
+| 1 | `shot_001.png` | **Responder** | Captured NTLMv2 hash in terminal |
+| 2 | `shot_002.png` | **hashcat** | Cracked password output |
+
+Cross-references: [setup](../00_original/sample_EX.md) | [results](../02_dynamic/sample_EX.md) | [reflection](../03_findings/sample_EX.md)
+
+---
+
+## Complete example -- Hunt (data collection)
+
+**Engagement:** `sample_EX` -- Internal hunt: "Detect LSASS credential access via Mimikatz-style tooling."
+
+---
+
+### Identity anchor
+
+| Field | Value |
+|-------|-------|
+| Hypothesis | An attacker or red-team tool accessed LSASS memory on endpoints in the last 30 days. |
+| Data sources | Sysmon Event 10 (ProcessAccess), Sysmon Event 1 (Process creation), Security Event 4688 |
+| Time range | 2026-04-11 to 2026-05-11 |
+| Scope | All Windows endpoints in SIEM (`wineventlog` + `sysmon` index) |
+| Analyst | Surrplexie |
+| Platform | Elastic SIEM (local lab replica) |
+
+---
+
+### Query 1 -- LSASS process access (Sysmon Event 10)
+
+```kql
+event.code: "10" AND winlog.event_data.TargetImage: *lsass*
+```
+
+| Field | Value |
+|-------|-------|
+| Total hits | 847 |
+| Distinct SourceImage values | 12 |
+| Suspicious hits | **3** |
+
+**Suspicious results:**
+
+| Timestamp | Host | SourceImage | GrantedAccess |
+|-----------|------|------------|---------------|
+| 2026-04-22 14:03 | WRK-04 | `C:\Windows\Temp\svch0st.exe` | `0x1FFFFF` (full access) |
+| 2026-04-22 14:04 | WRK-04 | `C:\Windows\Temp\svch0st.exe` | `0x1FFFFF` |
+| 2026-04-23 09:17 | WRK-04 | `cmd.exe` | `0x1010` (read only -- benign, AV scanner) |
+
+Baseline: AV scanner (`MsMpEng.exe`, `MBAMService.exe`) reads LSASS with `0x1410` regularly -- excluded.
+`0x1FFFFF` (PROCESS_ALL_ACCESS) from a non-system binary in `C:\Windows\Temp\` is a strong signal.
+
+---
+
+### Query 2 -- Suspicious process in Temp (pivot from Query 1)
+
+```kql
+event.code: "1" AND host.name: "WRK-04" AND process.name: "svch0st.exe"
+```
+
+| Timestamp | ParentImage | CommandLine | Hashes |
+|-----------|------------|-------------|--------|
+| 2026-04-22 13:58 | `powershell.exe` | `C:\Windows\Temp\svch0st.exe -p` | SHA256: `a1b2...` |
+
+Parent was `powershell.exe` with parent `winword.exe` -- confirmed macro dropper chain.
+
+---
+
+### IOC candidates identified
+
+| Type | Value | Confidence | Notes |
+|------|-------|-----------|-------|
+| SHA256 | `a1b2c3...` | High | Suspicious binary in Temp (Sysmon hash) |
+| File path | `C:\Windows\Temp\svch0st.exe` | High | Leet-spelling of svchost.exe |
+| Process | `svch0st.exe` | High | LSASS full-access dump |
+| Parent chain | `winword.exe -> powershell.exe -> svch0st.exe` | High | Macro -> PS -> credential dump |
+
+---
+
+### Collection summary
+
+Hunt **confirmed hypothesis** with high confidence on one host (WRK-04). Evidence supports
+a macro-enabled Word document delivering a PowerShell dropper that executed a credential
+dumper (Mimikatz or clone). Full timeline, all supporting queries, and IOCs passed to
+`03_findings` for final documentation.
+
+---
+
+### Screenshots index
+
+| # | File | Tool | What it shows |
+|---|------|------|---------------|
+| 1 | `shot_001.png` | **Elastic SIEM** | Query 1 results, 0x1FFFFF hit highlighted |
+| 2 | `shot_002.png` | **Elastic SIEM** | Process creation pivot for svch0st.exe |
+| 3 | `shot_003.png` | **Elastic SIEM** | Full parent chain: winword -> powershell -> svch0st |
+
+Cross-references: [brief](../00_original/sample_EX.md) | [analysis](../02_dynamic/sample_EX.md) | [outcome](../03_findings/sample_EX.md)
