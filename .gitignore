@@ -1,0 +1,218 @@
+# =============================================================================
+# labs — .gitignore
+# Personal reference repository. No executables, samples, or sensitive data.
+# =============================================================================
+
+# ---------------------------------------------------------------------------
+# Executables & compiled artifacts — NEVER committed
+# ---------------------------------------------------------------------------
+*.exe
+*.dll
+*.sys
+*.drv
+*.scr
+*.com
+*.pif
+*.cpl
+*.ocx
+*.so
+*.dylib
+*.out
+*.bin
+*.elf
+*.msi
+*.msix
+*.appx
+*.deb
+*.rpm
+*.pkg
+*.dmg
+*.iso
+*.img
+*.vhd
+*.vmdk
+*.ova
+*.ovf
+*.qcow2
+
+# ---------------------------------------------------------------------------
+# Archives that could contain samples
+# ---------------------------------------------------------------------------
+*.zip
+*.7z
+*.rar
+*.tar
+*.tar.gz
+*.tgz
+*.tar.bz2
+*.tar.xz
+*.gz
+*.bz2
+*.xz
+*.zst
+*.cab
+*.lzma
+
+# ---------------------------------------------------------------------------
+# Script types associated with weaponized payloads
+# ---------------------------------------------------------------------------
+*.bat
+*.cmd
+*.vbs
+*.vbe
+*.js
+*.jse
+*.wsf
+*.wsh
+*.hta
+*.ps1
+*.psd1
+*.psm1
+
+# NOTE: The above .ps1 exclusion applies to any real sample-derived scripts.
+# Scaffold/utility scripts in 30_scripts/ that are explicitly safe reference
+# files should be force-added with: git add -f 30_scripts/<file>.ps1
+
+# ---------------------------------------------------------------------------
+# Office macro-enabled documents
+# ---------------------------------------------------------------------------
+*.xlsm
+*.xlsb
+*.xltm
+*.docm
+*.dotm
+*.pptm
+*.potm
+*.ppam
+*.ppsm
+
+# ---------------------------------------------------------------------------
+# Java / .NET / compiled bytecode
+# ---------------------------------------------------------------------------
+*.class
+*.jar
+*.war
+*.ear
+*.pyc
+*.pyo
+__pycache__/
+
+# ---------------------------------------------------------------------------
+# VM / forensic disk images
+# ---------------------------------------------------------------------------
+*.vmx
+*.vmxf
+*.nvram
+*.vmem
+*.vmsn
+*.vmss
+*.vmsd
+*.vmdk
+*.vbox
+*.vbox-prev
+
+# ---------------------------------------------------------------------------
+# Memory dumps & forensic captures
+# ---------------------------------------------------------------------------
+*.dmp
+*.mem
+*.raw
+*.hiberfil.sys
+*.pagefile.sys
+*.pcap
+*.pcapng
+*.cap
+
+# ---------------------------------------------------------------------------
+# Malware sample staging directories (belt-and-suspenders)
+# ---------------------------------------------------------------------------
+samples/
+malware/
+payloads/
+drops/
+stage/
+sandbox/
+
+# ---------------------------------------------------------------------------
+# Credentials, secrets, API keys
+# ---------------------------------------------------------------------------
+.env
+.env.*
+*.pem
+*.key
+*.p12
+*.pfx
+*.cer
+*.crt
+*.csr
+secrets.json
+secrets.yaml
+secrets.yml
+config.local.*
+credentials
+credentials.json
+
+# ---------------------------------------------------------------------------
+# OS noise
+# ---------------------------------------------------------------------------
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+Desktop.ini
+$RECYCLE.BIN/
+*.lnk
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100
+.Trashes
+
+# Linux
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+
+# ---------------------------------------------------------------------------
+# Editor / IDE noise
+# ---------------------------------------------------------------------------
+
+# VS Code / Cursor
+.vscode/
+.cursor/
+*.code-workspace
+
+# JetBrains
+.idea/
+*.iml
+*.iws
+
+# Vim / Neovim
+*.swp
+*.swo
+[._]*.s[a-v][a-z]
+[._]*.s[w][a-z]
+Session.vim
+
+# Emacs
+\#*\#
+.\#*
+
+# ---------------------------------------------------------------------------
+# Logs & temp files
+# ---------------------------------------------------------------------------
+*.log
+*.tmp
+*.temp
+*.bak
+*.orig
+*.old
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
