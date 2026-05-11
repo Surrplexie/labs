@@ -34,6 +34,21 @@ CONFIG_FILE = Path(__file__).parent / ".workflow_gui_config.json"
 VERDICTS    = ["suspicious", "malicious", "benign", "unknown"]
 CONFIDENCES = ["high", "medium-high", "medium", "low"]
 STATUSES    = ["queued", "static", "dynamic", "done"]
+SAMPLE_TYPES = ["PE", "Office", "Script", "Archive"]
+
+# Per-type MITRE seed tags (shown in form hints)
+TYPE_MITRE_HINTS = {
+    "PE":      "T1204.002, T1027, T1547.001",
+    "Office":  "T1566.001, T1059.001, T1059.003",
+    "Script":  "T1059, T1027, T1140",
+    "Archive": "T1566.001, T1204.002, T1027",
+}
+TYPE_TAG_HINTS = {
+    "PE":      "exe, pe",
+    "Office":  "office-macro, ole",
+    "Script":  "script",
+    "Archive": "archive, container",
+}
 
 # Dark theme palette
 C_BG     = "#1e1e2e"
@@ -352,22 +367,25 @@ def build_dynamic(v: dict) -> str:
 
 
 def build_findings(v: dict) -> str:
-    sid      = v["sample_id"]
-    sha256   = v.get("sha256") or ""
-    analyst  = v.get("analyst") or "Surrplexie"
-    d_acq    = v.get("date_acquired") or today()
-    d_an     = v.get("date_analyzed") or today()
-    verdict  = v.get("verdict") or "unknown"
-    family   = v.get("family") or ""
-    conf     = v.get("confidence") or "low"
-    mb_url   = v.get("mb_url") or (f"https://bazaar.abuse.ch/sample/{sha256}/" if sha256 else "PENDING")
-    procmon  = "true" if v.get("procmon_run") else "false"
-    dynamic  = "true" if v.get("dynamic_complete") else "false"
+    sid        = v["sample_id"]
+    sha256     = v.get("sha256") or ""
+    analyst    = v.get("analyst") or "Surrplexie"
+    d_acq      = v.get("date_acquired") or today()
+    d_an       = v.get("date_analyzed") or today()
+    verdict    = v.get("verdict") or "unknown"
+    family     = v.get("family") or ""
+    conf       = v.get("confidence") or "low"
+    stype      = v.get("sample_type") or "PE"
+    mb_url     = v.get("mb_url") or (f"https://bazaar.abuse.ch/sample/{sha256}/" if sha256 else "PENDING")
+    procmon    = "true" if v.get("procmon_run") else "false"
+    dynamic    = "true" if v.get("dynamic_complete") else "false"
     return (
         f"---\n"
+        f"schema_version: 1\n"
         f"sample_id: {sid}\n"
         f"sha256: {sha256 or 'PENDING'}\n"
         f"phase: findings\n"
+        f"sample_type: {stype}\n"
         f"analyst: {analyst}\n"
         f"date_acquired: \"{d_acq}\"\n"
         f"date_analyzed: \"{d_an}\"\n"
@@ -381,7 +399,7 @@ def build_findings(v: dict) -> str:
         f"procmon_run: {procmon}\n"
         f"dynamic_complete: {dynamic}\n"
         f"---\n"
-        f"# {sid} -- findings (portfolio slice)\n\n"
+        f"# {sid} -- findings (portfolio slice) [{stype}]\n\n"
         f"**Analyst one-liner:** PENDING\n\n"
         f"Cross-references: [acquisition](../00_original/{sid}.md) | "
         f"[static](../01_static/{sid}.md) | [dynamic](../02_dynamic/{sid}.md) | "
@@ -619,6 +637,16 @@ class WorkflowApp(tk.Tk):
                    command=self._auto_detect_num).pack(side="left", padx=(8, 0))
         R += 1
 
+        _lbl(frame, "Sample type", R)
+        self._ns["sample_type"] = tk.StringVar(value="PE")
+        tc = _combo(frame, self._ns["sample_type"], SAMPLE_TYPES, R)
+        ttk.Label(frame,
+                  text="PE=exe/dll  Office=doc/xls  Script=ps1/vbs/js  Archive=zip/iso",
+                  style="Dim.TLabel",
+                  font=(UI_FONT[0], 8)).grid(row=R, column=2, sticky="w", padx=4)
+        self._ns["sample_type"].trace_add("write", self._on_type_change)
+        R += 1
+
         _lbl(frame, "Analyst", R)
         self._ns["analyst"] = tk.StringVar(value=self.cfg.get("analyst", "Surrplexie"))
         _entry(frame, self._ns["analyst"], R); R += 1
@@ -808,7 +836,7 @@ class WorkflowApp(tk.Tk):
         tool_frame.pack(fill="x", padx=14, pady=4)
 
         tools = [
-            ("Validate",                "validate.ps1",       "10 structural checks on repo integrity."),
+            ("Validate",                "validate.ps1",       "Structural integrity checks (CSV, phase files, schema version, forbidden ext)."),
             ("Export / Regen INDEX.md", "export-summary.ps1", "Parse frontmatter, rebuild INDEX.md and dist/summary.json."),
             ("Redact Check",            "redact-check.ps1",   "Scan for PII and host-machine identity leaks."),
             ("Strip EXIF",              "strip-exif.ps1",     "Strip metadata from 50_screenshots/ images."),
@@ -819,6 +847,31 @@ class WorkflowApp(tk.Tk):
             ttk.Button(rf, text=f"  {label}  ",
                        command=lambda s=script: self._run_ps_script(s)).pack(side="left")
             ttk.Label(rf, text=desc, style="Dim.TLabel").pack(side="left", padx=12)
+
+        # Ingest Procmon -- requires CSV path input
+        ttk.Separator(tool_frame, orient="horizontal").pack(fill="x", pady=(8, 4))
+        ttk.Label(tool_frame, text="Procmon ingest (requires Procmon CSV from VM)",
+                  style="Dim.TLabel").pack(anchor="w", pady=(0, 4))
+        pf = ttk.Frame(tool_frame)
+        pf.pack(fill="x", pady=4)
+        ttk.Label(pf, text="Sample ID:", style="Dim.TLabel").pack(side="left")
+        self._procmon_sid = tk.StringVar()
+        ttk.Entry(pf, textvariable=self._procmon_sid, width=12).pack(side="left", padx=(4, 10))
+        ttk.Label(pf, text="Procmon CSV:", style="Dim.TLabel").pack(side="left")
+        self._procmon_csv = tk.StringVar()
+        ttk.Entry(pf, textvariable=self._procmon_csv, width=34).pack(side="left", padx=(4, 6))
+        ttk.Button(pf, text="Browse", command=self._browse_procmon_csv).pack(side="left", padx=(0, 10))
+        pf2 = ttk.Frame(tool_frame)
+        pf2.pack(fill="x", pady=(0, 4))
+        ttk.Label(pf2, text="Filter processes:", style="Dim.TLabel").pack(side="left")
+        self._procmon_filter = tk.StringVar()
+        ttk.Entry(pf2, textvariable=self._procmon_filter, width=40).pack(side="left", padx=(4, 10))
+        ttk.Label(pf2, text="e.g. malware.exe,cmd.exe (blank=all)", style="Dim.TLabel").pack(side="left")
+        pf3 = ttk.Frame(tool_frame)
+        pf3.pack(fill="x", pady=(0, 6))
+        ttk.Button(pf3, text="  Ingest Procmon  ", command=self._run_ingest_procmon).pack(side="left")
+        self._procmon_dryrun = tk.BooleanVar()
+        ttk.Checkbutton(pf3, text="Dry run (preview only)", variable=self._procmon_dryrun).pack(side="left", padx=(12, 0))
 
         ttk.Separator(outer, orient="horizontal").pack(fill="x", padx=14, pady=8)
 
@@ -885,6 +938,23 @@ class WorkflowApp(tk.Tk):
             if not current_url:
                 self._ns["mb_url"].set(f"https://bazaar.abuse.ch/sample/{sha}/")
 
+    def _on_type_change(self, *_):
+        """Seed tags and MITRE hint fields when the sample type changes."""
+        t = self._ns["sample_type"].get()
+        # Only seed if field is currently empty or held a previous type hint
+        current_tags  = self._ns["tags"].get().strip()
+        current_mitre = self._ns["mitre"].get().strip()
+        hint_tags  = TYPE_TAG_HINTS.get(t, "")
+        hint_mitre = TYPE_MITRE_HINTS.get(t, "")
+        # Replace if blank or if value matches any known hint (user hasn't customised yet)
+        all_hints = set(v for v in TYPE_TAG_HINTS.values())
+        if not current_tags or current_tags in all_hints:
+            self._ns["tags"].set(hint_tags)
+        all_mitre = set(v for v in TYPE_MITRE_HINTS.values())
+        if not current_mitre or current_mitre in all_mitre:
+            self._ns["mitre"].set(hint_mitre)
+        self._log(f"Type changed to {t} -- tag/MITRE hints updated.")
+
     def _auto_detect_num(self):
         if not self.repo_root:
             self._log("No repo root set.")
@@ -936,6 +1006,7 @@ class WorkflowApp(tk.Tk):
             "procmon_run":      self._ns["procmon_run"].get(),
             "dynamic_complete": self._ns["dynamic_complete"].get(),
             "yara_rows":        self._ns["yara_txt"].get("1.0", "end").strip(),
+            "sample_type":      self._ns["sample_type"].get(),
         }
 
         try:
@@ -1105,6 +1176,34 @@ class WorkflowApp(tk.Tk):
         else:
             self._repo_lbl.configure(
                 text="(not found -- click Browse)", foreground=C_ERR)
+
+    def _browse_procmon_csv(self):
+        path = filedialog.askopenfilename(
+            title="Select Procmon CSV export",
+            filetypes=[("CSV files", "*.csv"), ("All files", "*.*")])
+        if path:
+            self._procmon_csv.set(path)
+
+    def _run_ingest_procmon(self):
+        if not self.repo_root:
+            messagebox.showerror("No repo", "Browse to repo root first.")
+            return
+        sid = self._procmon_sid.get().strip()
+        csv_path = self._procmon_csv.get().strip()
+        if not sid:
+            messagebox.showerror("Missing", "Enter a Sample ID (e.g. sample_07).")
+            return
+        if not csv_path:
+            messagebox.showerror("Missing", "Browse to a Procmon CSV file.")
+            return
+        script_path = self.repo_root / "30_scripts" / "ingest-procmon.ps1"
+        extra = ["-SampleId", sid, "-ProcmonCsv", csv_path,
+                 "-Root", str(self.repo_root)]
+        if self._procmon_filter.get().strip():
+            extra += ["-ProcessFilter", self._procmon_filter.get().strip()]
+        if self._procmon_dryrun.get():
+            extra += ["-DryRun"]
+        self._run_ps_script("ingest-procmon.ps1", extra_args=extra)
 
     def _browse_repo(self, update_settings: bool = False):
         path = filedialog.askdirectory(

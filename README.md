@@ -191,10 +191,11 @@ Current version: **schema_version: 1**. Every active findings file must include 
 
 | Script | One-line purpose |
 |--------|-----------------|
-| `workflow_gui.py` | Cross-platform GUI — paste all sample values once, every template section is auto-filled |
-| `new_sample.ps1` | Create a new sample slot with all phase files, screenshot folder, and tracker row |
+| `workflow_gui.py` | Cross-platform GUI — paste all sample values once, every template section is auto-filled (includes Type selector) |
+| `new_sample.ps1` | Create a new sample slot — PE / Office / Script / Archive type-specific templates |
+| `ingest-procmon.ps1` | Parse Procmon CSV from VM — write Markdown tables and IOC candidates into `02_dynamic` |
 | `close_sample.ps1` | Advance a slot's lifecycle status and print a phase-specific close checklist |
-| `validate.ps1` | Run 10 structural integrity checks; exits 1 if any FAIL |
+| `validate.ps1` | Run 11 structural integrity checks; exits 1 if any FAIL |
 | `export-summary.ps1` | Parse YAML frontmatter, regenerate `INDEX.md` and `dist/summary.json` |
 | `redact-check.ps1` | Scan all `.md`/`.csv`/`.txt` files for non-VM paths, emails, internal hostnames |
 | `strip-exif.ps1` | Strip EXIF metadata from all images in `50_screenshots/` |

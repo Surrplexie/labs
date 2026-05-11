@@ -12,7 +12,8 @@ All scripts require PowerShell 5.1+ and run from anywhere (they resolve the repo
 | Script | Purpose | When to run |
 |--------|---------|-------------|
 | `workflow_gui.py` | GUI: autofill phase files from pasted metadata | Optional; alternative or complement to `new_sample.ps1` |
-| `new_sample.ps1` | Scaffold a new sample slot | Before starting a new sample |
+| `new_sample.ps1` | Scaffold a new sample slot (PE / Office / Script / Archive templates) | Before starting a new sample |
+| `ingest-procmon.ps1` | Parse Procmon CSV -> Markdown tables + IOC candidates in 02_dynamic | After dynamic VM run, before `close_sample.ps1 -Status dynamic` |
 | `install-hooks.ps1` | Install pre-push git hook (Windows) | Once, after cloning |
 | `install-hooks.sh` | Install pre-push git hook (Linux) | Once, after cloning |
 | `close_sample.ps1` | Advance slot status, print close checklist | After each analysis phase |
@@ -25,24 +26,96 @@ All scripts require PowerShell 5.1+ and run from anywhere (they resolve the repo
 
 ## new_sample.ps1
 
-Creates a full sample slot with richer templates across all four phase folders,
-a `50_screenshots/sample_XX/` folder with a hygiene checklist, and a tracker CSV row.
+Creates a full sample slot across all four phase folders with **type-specific templates**,
+a `50_screenshots/sample_XX/` folder, and a tracker CSV row.
+
+**`-Type` parameter** selects the template set:
+
+| Type | Static template focuses on | Dynamic template focuses on |
+|------|----------------------------|-----------------------------|
+| `PE` (default) | DIE / PEStudio / CFF Explorer / HxD | Process tree, file/reg/net Procmon tables |
+| `Office` | olevba / oledump / embedded objects | Word/Excel child processes, dropped files |
+| `Script` | Deobfuscation steps, API calls, IOC strings | Script host children, console output |
+| `Archive` | Archive manifest, inner file hashes, VT | Inner payload extraction and execution |
 
 ```powershell
-# Create slot for sample_07
+# PE (default)
 powershell -ExecutionPolicy Bypass -File .\30_scripts\new_sample.ps1 -NextNumber 7
 
-# With a custom analyst name
-powershell -ExecutionPolicy Bypass -File .\30_scripts\new_sample.ps1 -NextNumber 7 -Analyst Surrplexie
+# Office macro document
+powershell -ExecutionPolicy Bypass -File .\30_scripts\new_sample.ps1 -NextNumber 8 -Type Office
+
+# Script (PS1/VBS/HTA/JS/etc.)
+powershell -ExecutionPolicy Bypass -File .\30_scripts\new_sample.ps1 -NextNumber 9 -Type Script
+
+# Archive / container (ZIP/ISO/RAR)
+powershell -ExecutionPolicy Bypass -File .\30_scripts\new_sample.ps1 -NextNumber 10 -Type Archive
 ```
 
 **Files created:**
-- `00_original/sample_07.md` -- acquisition receipt, hash fields, Bazaar metadata
-- `01_static/sample_07.md` -- DIE / PEStudio / CFF Explorer / HxD sections
-- `02_dynamic/sample_07.md` -- Procmon, process tree, file system, registry, network tables
-- `03_findings/sample_07.md` -- YAML frontmatter stub + verdict, IOC table, portfolio blurb
-- `50_screenshots/sample_07/SHOT_INDEX.txt` -- screenshot map + evidence hygiene checklist
+- `00_original/sample_XX.md` -- acquisition receipt (shared across all types)
+- `01_static/sample_XX.md` -- type-specific static triage template
+- `02_dynamic/sample_XX.md` -- type-specific dynamic triage template (includes Procmon ingest reminder)
+- `03_findings/sample_XX.md` -- YAML frontmatter with `sample_type` field + seeded MITRE/tag hints
+- `50_screenshots/sample_XX/SHOT_INDEX.txt` -- screenshot map + hygiene checklist
 - `samples_tracker.csv` -- new row appended with status `queued`
+
+---
+
+## ingest-procmon.ps1
+
+Reads a **Procmon CSV export** from your VM and writes structured Markdown tables and
+IOC candidates into the sample's `02_dynamic` file and `40_iocs/indicators.csv`.
+
+The raw Procmon CSV is **never committed** -- it stays on your VM or a scratch location.
+Only the extracted, human-readable tables land in the repo.
+
+**What it extracts:**
+- Process tree (parent -> child Create events)
+- File system events (writes/creates on user-space and interesting paths)
+- Registry events (RegSetValue + persistence-adjacent keys, auto-flagged)
+- Network events (TCP/UDP connections, remote host and port)
+- IOC candidates (dropped file paths, persistence keys, remote hosts) as a review table
+
+```powershell
+# Basic: all processes in the CSV
+powershell -ExecutionPolicy Bypass -File .\30_scripts\ingest-procmon.ps1 `
+    -SampleId sample_07 `
+    -ProcmonCsv "C:\Users\win11\Desktop\procmon_sample_07.csv"
+
+# Filter to specific processes (recommended -- reduces noise)
+powershell -ExecutionPolicy Bypass -File .\30_scripts\ingest-procmon.ps1 `
+    -SampleId sample_07 `
+    -ProcmonCsv "C:\Users\win11\Desktop\procmon_sample_07.csv" `
+    -ProcessFilter "Updater_v2.211.exe,cmd.exe,powershell.exe"
+
+# Dry run: preview output without writing anything
+powershell -ExecutionPolicy Bypass -File .\30_scripts\ingest-procmon.ps1 `
+    -SampleId sample_07 `
+    -ProcmonCsv "C:\Users\win11\Desktop\procmon_sample_07.csv" `
+    -DryRun
+
+# Skip appending to indicators.csv (tables only)
+powershell -ExecutionPolicy Bypass -File .\30_scripts\ingest-procmon.ps1 `
+    -SampleId sample_07 `
+    -ProcmonCsv "C:\Users\win11\Desktop\procmon_sample_07.csv" `
+    -SkipIocAppend
+```
+
+**Parameters:**
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `-SampleId` | required | e.g. `sample_07` or bare `7` |
+| `-ProcmonCsv` | required | Full path to Procmon CSV export |
+| `-ProcessFilter` | (all) | Comma-separated process names to filter to |
+| `-MaxRows` | 40 | Max rows per Markdown table before truncation |
+| `-DryRun` | off | Print output only, modify nothing |
+| `-SkipIocAppend` | off | Skip appending candidates to indicators.csv |
+| `-Root` | auto | Repo root path |
+
+**After running:** Open `02_dynamic/sample_XX.md`, review appended tables, remove noise rows,
+fill Notes columns, then run `close_sample.ps1 -Status dynamic`.
 
 ---
 
