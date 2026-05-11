@@ -178,7 +178,7 @@ foreach ($row in $tracker) {
         sample_id         = $id
         sha256            = Coalesce2 $fm['sha256']            $row.sha256
         name_tag          = Coalesce2 $fm['name_tag']          $row.name_tag
-        status            = Coalesce2 $fm['status']            $status             'empty'
+        status            = Coalesce2 $status            $fm['status']       'empty'
         verdict           = Coalesce2 $fm['verdict']           ''                  'unknown'
         family_guess      = Coalesce2 $fm['family_guess']      ''                  ''
         family_confidence = Coalesce2 $fm['family_confidence'] ''                  ''

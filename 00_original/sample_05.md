@@ -1,20 +1,73 @@
-# sample_05 — original receipt (host log)
+﻿# sample_05 -- original receipt (host log)
 
-**Sample ID:** `sample_05`
+**Purpose:** Record identification and sourcing before/at acquisition. Binaries stay VM-only.
+Populate from MalwareBazaar *before* download.
 
 | Field | Value |
 |--------|--------|
-| MalwareBazaar URL |  |
-| SHA256 |  |
-| SHA1 / MD5 |  |
-| Tag / notes |  |
+| **Sample ID** | `sample_05` |
+| **MalwareBazaar URL** | |
+| **SHA256** | |
+| **SHA1** | |
+| **MD5** | |
+| **File name (claimed)** | |
+| **MIME / type** | |
+| **Size** | |
+| **First seen (Bazaar)** | |
+| **Last seen** | |
+| **Bazaar verdict** | |
+| **Vendor detections** | |
+
+## Delivery & context
+
+| Field | Value |
+|--------|--------|
+| **Delivery method** | |
+| **Reporter** | |
+| **Tags** | |
+| **Magika** | |
+| **TrID (top)** | |
+
+## Hashes for clustering / lookups
+
+| Field | Value | Notes |
+|--------|--------|--------|
+| **imphash** | | |
+| **ssdeep** | | |
+| **TLSH** | | |
+| **dhash icon** | | |
+
+## URLs referenced on Bazaar page (IOC leads)
+
+| Kind | URL / note |
+|------|------------|
+| | |
+
+## YARA rules flagged
+
+| Rule | Author | Implication (rough) |
+|------|--------|---------------------|
+| | | |
+
+## Bazaar intelligence snippets
+
+| Metric | Value |
+|--------|--------|
+| `# of uploads` | |
+| `# of downloads` | |
+| **Origin country** | |
 
 ## Acquisition checklist (VM)
 
-- [ ] VM-only download
-- [ ] VM path: 
-- [ ] No binary on host
+- [ ] Download **inside VM only** (Bazaar login / API)
+- [ ] **SHA256 verified on VM** -- matches Bazaar value
+- [ ] VM path documented (no sensitive analyst-machine paths here)
+- [ ] Optional: clean **snapshot taken before** first run
+- [ ] **Never** copy `.exe` / binary to this host logbook PC
 
-## Paste area
+## Cross-links
 
-
+- Static notes: `01_static/sample_05.md`
+- Dynamic notes: `02_dynamic/sample_05.md`
+- Findings: `03_findings/sample_05.md`
+- Screenshots: `50_screenshots/sample_05/`

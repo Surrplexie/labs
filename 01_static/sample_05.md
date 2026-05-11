@@ -1,27 +1,55 @@
-# sample_05 — static triage
+﻿# sample_05 -- static triage
 
-**SHA256:** · **Date:**
+**SHA256:** <!-- fill --> | **Date:** <!-- fill -->
+
+**Host evidence:** `50_screenshots/sample_05/`
+
+## Session results
+
+| Step | Done? | Notes |
+|------|-------|-------|
+| DIE | | |
+| PEStudio | | |
+| CFF Explorer | | |
+| HxD | | |
+
+## Hash reconcile
+
+<!-- Note if any tool hash differs from the full-file Bazaar hash and explain why -->
+
+---
 
 ## DIE
 
-
+<!-- Compiler, linker, installer type, packer heuristic, overlay details -->
 
 ## PEStudio
 
-
+<!-- SHA256 confirm, entropy, version resource, manifest, imports count, overlay, VT hits -->
 
 ## CFF Explorer
 
-
+<!-- File type, file size vs PE image size, version info, NTFS timestamps (VM local time) -->
 
 ## HxD
 
+<!-- Signature bytes at 0x0, section names visible in ASCII column, interesting offsets -->
 
+---
 
-## Static summary
+## Static summary (portfolio-ready)
 
+<!-- One paragraph: structure, tooling evidence, packaging type, confidence level, next steps -->
 
+## Screenshot map
 
-## Screenshots
+| File | Tool | What it shows |
+|------|------|----------------|
+| | | |
 
-`screenshots/sample_05/`
+## Cross-links
+
+- Original: `00_original/sample_05.md`
+- Dynamic: `02_dynamic/sample_05.md`
+- Findings: `03_findings/sample_05.md`
+- Screenshots: `50_screenshots/sample_05/`
