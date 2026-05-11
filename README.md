@@ -2,6 +2,9 @@
 
 > **Personal malware triage logbook — public for professional seekers and learners.**
 > No releases, versioned packages, or scheduled updates are guaranteed or will ever be provided.
+> **One exception:** the [`workflow_gui`](./30_scripts/workflow_gui.py) compiled binary
+> (`.exe` / Linux) may be released via GitHub Releases as the sole distributable artifact
+> from this repository. It contains no samples, no credentials, and no analysis data.
 
 ---
 
@@ -58,6 +61,7 @@ It is **not** intended for production deployment, operational use, or redistribu
 | Use or understand the automation scripts | [`30_scripts/README.md`](./30_scripts/README.md) |
 | Access raw IOC data | [`40_iocs/indicators.csv`](./40_iocs/indicators.csv) |
 | Walk through the full workflow step by step | [`WORKFLOW.md`](./WORKFLOW.md) |
+| Use the GUI to fill phase files automatically | [`30_scripts/workflow_gui.py`](./30_scripts/workflow_gui.py) |
 | Understand the full workflow (summary) | [Complete Workflow Guide](#complete-workflow-guide) below |
 
 ---
@@ -151,12 +155,15 @@ See [`30_scripts/README.md`](./30_scripts/README.md) for full documentation and 
 
 | Script | One-line purpose |
 |--------|-----------------|
+| `workflow_gui.py` | Cross-platform GUI — paste all sample values once, every template section is auto-filled |
 | `new_sample.ps1` | Create a new sample slot with all phase files, screenshot folder, and tracker row |
 | `close_sample.ps1` | Advance a slot's lifecycle status and print a phase-specific close checklist |
 | `validate.ps1` | Run 10 structural integrity checks; exits 1 if any FAIL |
 | `export-summary.ps1` | Parse YAML frontmatter, regenerate `INDEX.md` and `dist/summary.json` |
 | `redact-check.ps1` | Scan all `.md`/`.csv`/`.txt` files for non-VM paths, emails, internal hostnames |
 | `strip-exif.ps1` | Strip EXIF metadata from all images in `50_screenshots/` |
+| `build_exe.ps1` | Compile `workflow_gui.py` to a standalone `.exe` using PyInstaller |
+| `build_linux.sh` | Compile `workflow_gui.py` to a standalone Linux binary using PyInstaller |
 
 ### What validate.ps1 checks
 
@@ -172,6 +179,69 @@ Running `validate.ps1` before every commit gives you confidence that:
 8. No orphan `.md` files exist without a tracker row
 9. No forbidden file extensions exist anywhere in the working tree
 10. A `50_screenshots/sample_XX/` folder exists for every non-empty slot
+
+---
+
+## Workflow GUI
+
+### What it is
+
+`30_scripts/workflow_gui.py` is a cross-platform graphical assistant that replaces
+manual copy-paste across the four phase files. Instead of opening each `.md` and filling
+placeholders by hand, you paste all values into one form and click **Create Sample** —
+all four phase files and the screenshot folder are written in one shot with every field
+pre-filled from what you provided.
+
+> **Release policy exception:**
+> This repository has no releases and will never have versioned packages — with
+> **one single exception**: the compiled `workflow_gui` binary (`.exe` on Windows,
+> native binary on Linux) may be published via GitHub Releases as the sole distributable
+> artifact ever produced by this repo. It contains zero analysis data, zero credentials,
+> and zero sample content. If a release exists under Releases, it is `workflow_gui` and
+> nothing else.
+
+### Running directly (requires Python 3.10+)
+
+```powershell
+python 30_scripts\workflow_gui.py
+python 30_scripts\workflow_gui.py --repo "C:\path\to\labs"
+```
+
+```bash
+python3 30_scripts/workflow_gui.py
+python3 30_scripts/workflow_gui.py --repo /path/to/labs
+```
+
+### Compiling to a standalone executable
+
+**Windows** — produces `dist\workflow_gui.exe` (~30–50 MB, no Python required):
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\30_scripts\build_exe.ps1
+```
+
+**Linux** — produces `dist/workflow_gui` (~25–45 MB, no Python required):
+
+```bash
+bash ./30_scripts/build_linux.sh
+```
+
+Both build scripts install/upgrade PyInstaller automatically via pip, then call
+PyInstaller with `--onefile --windowed`. Build artifacts land in `dist/` which is
+excluded from the repo by `.gitignore`.
+
+### What the GUI does
+
+| Tab | What you can do |
+|-----|----------------|
+| **New Sample** | Fill one form — SHA256, hashes, filename, MIME, dates, verdict, confidence, tags, MITRE IDs, YARA rows — and click Create to write all 4 phase `.md` files + `SHOT_INDEX.txt` in one action |
+| **Update Sample** | Select an existing sample, change its lifecycle status and frontmatter values (verdict, confidence, tags, MITRE), write back to tracker and findings file |
+| **Tools** | One-click buttons to run `validate.ps1`, `export-summary.ps1`, `redact-check.ps1`, and `strip-exif.ps1` with live output |
+| **Settings** | Set the repo root path and default analyst name; saved to a local config file |
+
+The GUI requires no external Python packages — only the standard library `tkinter`
+(included with Python on Windows; install `python3-tk` on Debian/Ubuntu or
+`python3-tkinter` on Fedora for the native script).
 
 ---
 

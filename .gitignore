@@ -70,8 +70,10 @@
 *.psm1
 
 # NOTE: The above .ps1 exclusion applies to any real sample-derived scripts.
-# Scaffold/utility scripts in 30_scripts/ are whitelisted below.
+# Scaffold/utility scripts and the GUI source in 30_scripts/ are whitelisted below.
 !30_scripts/*.ps1
+!30_scripts/*.py
+!30_scripts/*.sh
 
 # ---------------------------------------------------------------------------
 # Office macro-enabled documents
@@ -205,10 +207,18 @@ Session.vim
 .\#*
 
 # ---------------------------------------------------------------------------
-# Generated output (machine-readable export — not committed)
+# Generated output and compiled binaries (not committed to repo)
 # ---------------------------------------------------------------------------
 dist/
 summary.json
+# workflow_gui compiled build artifacts
+dist/_build_tmp/
+dist/_spec/
+dist/workflow_gui
+dist/workflow_gui.exe
+*.spec
+# GUI config (local machine settings, not shared)
+30_scripts/.workflow_gui_config.json
 
 # ---------------------------------------------------------------------------
 # Logs & temp files
