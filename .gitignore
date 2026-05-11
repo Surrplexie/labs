@@ -211,6 +211,7 @@ Session.vim
 # ---------------------------------------------------------------------------
 dist/
 summary.json
+portfolio.json
 # workflow_gui compiled build artifacts
 dist/_build_tmp/
 dist/_spec/

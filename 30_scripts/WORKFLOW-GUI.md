@@ -57,10 +57,21 @@ If any of the above is unacceptable, do not run the GUI or build scripts.
 
 ## What the GUI is for
 
-The Workflow GUI helps you **paste metadata once** (hashes, Bazaar fields, tags, MITRE
-IDs, and similar) and **generate the four phase Markdown files** plus screenshot folder
-metadata in one step. It does not replace safe analysis practice, VM isolation, or your
-own judgment.
+The Workflow GUI (v3.0+) helps you **fill any engagement kind** (file, CTF, lab, hunt)
+from a single form — no manual file editing for metadata. Key features:
+
+| Feature | Description |
+|---------|-------------|
+| **New Engagement** | Scaffold + fill all four phase files and frontmatter for any kind |
+| **CTF forms** | Platform, category, difficulty, points, solved flag, public-writeup toggle |
+| **Lab forms** | Course, module, objectives list, objectives-met toggle |
+| **Hunt forms** | Hypothesis, data sources, timebox, detections-found toggle |
+| **Screenshots tab** | Browse images, add captions, auto-number as shot_NNN.png, copy to 50_screenshots/slot/, update SHOT_INDEX.txt |
+| **Update Engagement** | Kind-aware status, frontmatter patch -- load existing values, change what changed |
+| **Tools tab** | One-click Validate, Export, Redact Check, Strip EXIF, Procmon ingest, Event ingest |
+| **Thumbnail preview** | Installed `pillow` enables preview in Screenshots tab |
+
+It does not replace safe analysis practice, VM isolation, or your own judgment.
 
 ---
 
@@ -280,6 +291,7 @@ from official distribution instructions you trust.
 | Run with explicit repo | `python 30_scripts\workflow_gui.py --repo "C:\path\to\labs"` | `python3 30_scripts/workflow_gui.py --repo /path/to/labs` |
 | Build standalone | `powershell -ExecutionPolicy Bypass -File .\30_scripts\build_exe.ps1` | `bash ./30_scripts/build_linux.sh` |
 | Run standalone | `.\dist\workflow_gui.exe` | `./dist/workflow_gui` |
+| Enable thumbnails (Screenshots tab) | `pip install pillow` | `pip3 install pillow` |
 | Local config (gitignored) | `30_scripts\.workflow_gui_config.json` | same path |
 
 ---
