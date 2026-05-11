@@ -63,6 +63,7 @@ It is **not** intended for production deployment, operational use, or redistribu
 | Walk through the full workflow step by step | [`WORKFLOW.md`](./WORKFLOW.md) |
 | Use the GUI to fill phase files automatically | [`30_scripts/workflow_gui.py`](./30_scripts/workflow_gui.py) |
 | Step-by-step GUI usage (Windows and Linux) and disclaimers | [`30_scripts/WORKFLOW-GUI.md`](./30_scripts/WORKFLOW-GUI.md) |
+| Verify a downloaded release binary (checksum steps) | [`RELEASE-VERIFICATION.md`](./RELEASE-VERIFICATION.md) |
 | Understand the full workflow (summary) | [Complete Workflow Guide](#complete-workflow-guide) below |
 
 ---
@@ -74,6 +75,8 @@ labs/
 |
 |-- README.md                    <- You are here
 |-- INDEX.md                     <- Auto-generated sample index (run export-summary.ps1)
+|-- WORKFLOW.md                  <- Full step-by-step workflow guide for new users
+|-- RELEASE-VERIFICATION.md     <- Binary checksum verification and release policy
 |-- LICENSE                      <- MIT License
 |-- .gitignore                   <- Blocks executables, archives, secrets, OS noise
 |-- samples_tracker.csv          <- One row per slot: sha256, url, name, status
@@ -108,12 +111,21 @@ labs/
 |
 |-- 30_scripts/                  <- PowerShell lifecycle and hygiene automation
 |   |-- README.md                <- Script documentation and usage examples
-|   |-- new_sample.ps1           <- Scaffold a new sample slot
+|   |-- new_sample.ps1           <- Scaffold a new sample slot (PE/Office/Script/Archive)
 |   |-- close_sample.ps1         <- Advance status, print close checklist
-|   |-- validate.ps1             <- 10-point structural integrity check
+|   |-- validate.ps1             <- 11-point structural integrity check
 |   |-- export-summary.ps1       <- Regenerate INDEX.md + dist/summary.json
 |   |-- redact-check.ps1         <- Scan for PII / non-VM paths before committing
-|   `-- strip-exif.ps1           <- Strip EXIF metadata from screenshots
+|   |-- strip-exif.ps1           <- Strip EXIF metadata from screenshots
+|   |-- ingest-procmon.ps1       <- Parse Procmon CSV -> Markdown tables + IOC candidates
+|   |-- workflow_gui.py          <- Cross-platform GUI placeholder autofill helper
+|   |-- build_exe.ps1            <- Build workflow_gui.exe (pinned PyInstaller + SHA256SUMS)
+|   |-- build_linux.sh           <- Build workflow_gui Linux binary (pinned + SHA256SUMS)
+|   |-- build_requirements.txt   <- Pinned build deps (pyinstaller==6.20.0)
+|   |-- install-hooks.ps1        <- Install pre-push Git hook (Windows)
+|   |-- install-hooks.sh         <- Install pre-push Git hook (Linux)
+|   |-- WORKFLOW-GUI.md          <- GUI usage guide and disclaimers
+|   `-- schema/                  <- JSON Schemas for frontmatter and summary.json
 |
 |-- 40_iocs/                     <- Consolidated IOC CSV
 |   |-- README.md                <- Schema documentation
@@ -199,8 +211,11 @@ Current version: **schema_version: 1**. Every active findings file must include 
 | `export-summary.ps1` | Parse YAML frontmatter, regenerate `INDEX.md` and `dist/summary.json` |
 | `redact-check.ps1` | Scan all `.md`/`.csv`/`.txt` files for non-VM paths, emails, internal hostnames |
 | `strip-exif.ps1` | Strip EXIF metadata from all images in `50_screenshots/` |
-| `build_exe.ps1` | Compile `workflow_gui.py` to a standalone `.exe` using PyInstaller |
-| `build_linux.sh` | Compile `workflow_gui.py` to a standalone Linux binary using PyInstaller |
+| `build_exe.ps1` | Compile `workflow_gui.py` to `.exe` with pinned PyInstaller; outputs `SHA256SUMS.txt` |
+| `build_linux.sh` | Compile `workflow_gui.py` to Linux binary with pinned PyInstaller; outputs `SHA256SUMS.txt` |
+| `build_requirements.txt` | Pinned build-time dependency list (`pyinstaller==6.20.0`) |
+| `install-hooks.ps1` | Install the pre-push Git hook on Windows |
+| `install-hooks.sh` | Install the pre-push Git hook on Linux |
 
 ### What validate.ps1 checks
 
@@ -263,9 +278,10 @@ powershell -ExecutionPolicy Bypass -File .\30_scripts\build_exe.ps1
 bash ./30_scripts/build_linux.sh
 ```
 
-Both build scripts install/upgrade PyInstaller automatically via pip, then call
-PyInstaller with `--onefile --windowed`. Build artifacts land in `dist/` which is
-excluded from the repo by `.gitignore`.
+Both build scripts now use a **pinned PyInstaller version** from
+[`30_scripts/build_requirements.txt`](./30_scripts/build_requirements.txt) and
+automatically output a `dist/SHA256SUMS.txt` checksum file alongside the binary.
+Build artifacts land in `dist/` which is excluded from the repo by `.gitignore`.
 
 ### What the GUI does
 
@@ -283,6 +299,54 @@ The GUI requires no external Python packages — only the standard library `tkin
 **Full usage walkthrough (Windows and Linux), field-by-field examples, and extended
 legal-style disclaimers** (no malware shipped; use at your own risk; hash verification
 for any pre-built binary): see [`30_scripts/WORKFLOW-GUI.md`](./30_scripts/WORKFLOW-GUI.md).
+
+---
+
+## Release hardening
+
+Every release binary is built by GitHub Actions in a reproducible, auditable environment.
+
+### What the release CI pipeline does
+
+The `.github/workflows/release.yml` workflow triggers on any `v*` tag and runs four
+sequential jobs:
+
+| Job | What it does |
+|-----|-------------|
+| **integrity** | Runs `validate.ps1` and `redact-check.ps1` — release is blocked on any FAIL |
+| **build-windows** | Installs pinned PyInstaller (`build_requirements.txt`), builds `.exe`, writes `SHA256SUMS.txt` |
+| **sbom** | Generates a CycloneDX software bill of materials (`sbom.cdx.json`) for the build environment |
+| **publish** | Attaches `.exe`, `SHA256SUMS.txt`, and `sbom.cdx.json` to the GitHub Release |
+
+### Pinned build environment
+
+| Component | Pinned value |
+|-----------|-------------|
+| Python | 3.12 (GitHub Actions `setup-python@v5`) |
+| PyInstaller | `6.20.0` (see [`30_scripts/build_requirements.txt`](./30_scripts/build_requirements.txt)) |
+| Runtime deps | None — `workflow_gui.py` uses only the Python standard library |
+
+To update the pin: change the version in `build_requirements.txt` **and** the
+`PYINSTALLER_VERSION` constant in both `build_exe.ps1` and `build_linux.sh`, then note
+the change in `30_scripts/schema/CHANGELOG.md`.
+
+### Verifying a downloaded binary
+
+```powershell
+# PowerShell (Windows) -- one-liner pass/fail
+$expected = ((Get-Content .\SHA256SUMS.txt | Where-Object { $_ -match 'workflow_gui.exe' }) -split '\s+')[0].ToUpper()
+$actual   = (Get-FileHash .\workflow_gui.exe -Algorithm SHA256).Hash.ToUpper()
+if ($actual -eq $expected) { Write-Host "PASS" -ForegroundColor Green } else { Write-Host "FAIL" -ForegroundColor Red }
+```
+
+```bash
+# Linux / macOS
+sha256sum -c SHA256SUMS.txt
+```
+
+Full step-by-step verification instructions, SBOM notes, and reproducible
+local build instructions are in
+[**`RELEASE-VERIFICATION.md`**](./RELEASE-VERIFICATION.md).
 
 ---
 

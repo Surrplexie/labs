@@ -1,0 +1,17 @@
+# build_requirements.txt
+# Pinned build-time dependencies for workflow_gui reproducible builds.
+#
+# Install with:
+#   pip install -r 30_scripts/build_requirements.txt
+#
+# To update the pin after validating a new PyInstaller release:
+#   1. Test the build locally with the new version.
+#   2. Update the version pin below.
+#   3. Update PYINSTALLER_VERSION in build_exe.ps1 and build_linux.sh to match.
+#   4. Note the change in 30_scripts/schema/CHANGELOG.md under a new version entry.
+#   5. Regenerate SHA256SUMS and attach to the release.
+#
+# Only PyInstaller is required. workflow_gui.py uses only the Python standard library
+# (tkinter, csv, json, re, subprocess, pathlib, argparse, datetime, os, sys).
+
+pyinstaller==6.20.0

@@ -1,43 +1,64 @@
 #Requires -Version 5.1
 <#
 .SYNOPSIS
-    Build workflow_gui.exe for Windows using PyInstaller.
+    Build workflow_gui.exe for Windows using a pinned PyInstaller version.
 
 .DESCRIPTION
-    Installs/upgrades PyInstaller then compiles workflow_gui.py into a
-    single self-contained .exe.  Output lands in dist\workflow_gui.exe.
+    Installs the exact PyInstaller version from build_requirements.txt, then
+    compiles workflow_gui.py into a single self-contained .exe.
+
+    Outputs:
+      dist\workflow_gui.exe    -- standalone executable
+      dist\SHA256SUMS.txt      -- SHA-256 checksum for verification
+
+    The checksum file lets you (or a release consumer) verify the binary
+    has not been tampered with:
+
+        # PowerShell verification:
+        (Get-FileHash dist\workflow_gui.exe -Algorithm SHA256).Hash.ToUpper()
+        # compare to dist\SHA256SUMS.txt
 
 .PARAMETER Python
     Path to the Python executable (default: python).
 
-.PARAMETER SkipPipUpgrade
-    Skip the pip install/upgrade step (use if PyInstaller is already installed).
+.PARAMETER SkipPipInstall
+    Skip the pip install step (use only if the exact pinned version is already
+    installed and you do not want pip to run).
 
 .EXAMPLE
     powershell -ExecutionPolicy Bypass -File .\30_scripts\build_exe.ps1
     powershell -ExecutionPolicy Bypass -File .\30_scripts\build_exe.ps1 -Python python3.12
+    powershell -ExecutionPolicy Bypass -File .\30_scripts\build_exe.ps1 -SkipPipInstall
 #>
 param(
-    [string]$Python       = 'python',
-    [switch]$SkipPipUpgrade
+    [string]$Python        = 'python',
+    [switch]$SkipPipInstall
 )
 
 $ErrorActionPreference = 'Stop'
 
+# Pinned version -- keep in sync with build_requirements.txt
+$PYINSTALLER_VERSION = '6.20.0'
+
 $Root       = Split-Path $PSScriptRoot -Parent
 $Script     = Join-Path $PSScriptRoot  'workflow_gui.py'
+$ReqFile    = Join-Path $PSScriptRoot  'build_requirements.txt'
 $DistDir    = Join-Path $Root 'dist'
 $BuildTmp   = Join-Path $DistDir '_build_tmp'
 $SpecDir    = Join-Path $DistDir '_spec'
 $OutputExe  = Join-Path $DistDir 'workflow_gui.exe'
+$SumsFile   = Join-Path $DistDir 'SHA256SUMS.txt'
 
 Write-Host ""
 Write-Host "=== Workflow GUI -- Windows Build ===" -ForegroundColor Cyan
-Write-Host "  Script : $Script"
-Write-Host "  Output : $OutputExe"
+Write-Host "  Script      : $Script"
+Write-Host "  PyInstaller : $PYINSTALLER_VERSION (pinned)"
+Write-Host "  Output      : $OutputExe"
 Write-Host ""
 
-# -- Check Python ----------------------------------------------------------
+# ---------------------------------------------------------------------------
+# Check Python
+# ---------------------------------------------------------------------------
 Write-Host "Checking Python..." -NoNewline
 try {
     $ver = & $Python --version 2>&1
@@ -48,23 +69,47 @@ try {
     exit 1
 }
 
-# -- Upgrade PyInstaller ---------------------------------------------------
-if (-not $SkipPipUpgrade) {
-    Write-Host "Installing / upgrading PyInstaller..." -ForegroundColor Cyan
-    & $Python -m pip install --upgrade pyinstaller --quiet
+# ---------------------------------------------------------------------------
+# Install pinned PyInstaller
+# ---------------------------------------------------------------------------
+if (-not $SkipPipInstall) {
+    Write-Host "Installing pinned PyInstaller $PYINSTALLER_VERSION..." -ForegroundColor Cyan
+    if (Test-Path $ReqFile) {
+        & $Python -m pip install -r $ReqFile --quiet
+    } else {
+        & $Python -m pip install "pyinstaller==$PYINSTALLER_VERSION" --quiet
+    }
     if ($LASTEXITCODE -ne 0) {
-        Write-Error "pip install pyinstaller failed."
+        Write-Error "pip install pyinstaller==$PYINSTALLER_VERSION failed."
         exit 1
     }
-    Write-Host "  PyInstaller ready." -ForegroundColor Green
+
+    # Confirm installed version matches pin
+    $installedVer = (& $Python -m pip show pyinstaller 2>&1 | Select-String 'Version:').ToString() -replace '^Version:\s*', ''
+    if ($installedVer.Trim() -ne $PYINSTALLER_VERSION) {
+        Write-Host "  WARNING: installed PyInstaller $($installedVer.Trim()) != pinned $PYINSTALLER_VERSION" -ForegroundColor Yellow
+        Write-Host "  Continuing -- update build_requirements.txt if this is intentional." -ForegroundColor Yellow
+    } else {
+        Write-Host "  PyInstaller $PYINSTALLER_VERSION confirmed." -ForegroundColor Green
+    }
 }
 
-# -- Create output dirs ----------------------------------------------------
-New-Item -ItemType Directory -Force -Path $DistDir   | Out-Null
-New-Item -ItemType Directory -Force -Path $BuildTmp  | Out-Null
-New-Item -ItemType Directory -Force -Path $SpecDir   | Out-Null
+# ---------------------------------------------------------------------------
+# Capture source hash before build (reproducibility note)
+# ---------------------------------------------------------------------------
+$srcHash = (Get-FileHash $Script -Algorithm SHA256).Hash.ToUpper()
+Write-Host "  Source hash (workflow_gui.py): $srcHash"
 
-# -- Run PyInstaller -------------------------------------------------------
+# ---------------------------------------------------------------------------
+# Create output dirs
+# ---------------------------------------------------------------------------
+New-Item -ItemType Directory -Force -Path $DistDir  | Out-Null
+New-Item -ItemType Directory -Force -Path $BuildTmp | Out-Null
+New-Item -ItemType Directory -Force -Path $SpecDir  | Out-Null
+
+# ---------------------------------------------------------------------------
+# Run PyInstaller
+# ---------------------------------------------------------------------------
 Write-Host ""
 Write-Host "Building..." -ForegroundColor Cyan
 
@@ -84,12 +129,35 @@ if ($LASTEXITCODE -ne 0) {
     exit 1
 }
 
-# -- Report ----------------------------------------------------------------
+# ---------------------------------------------------------------------------
+# Compute and write SHA256SUMS
+# ---------------------------------------------------------------------------
 if (Test-Path $OutputExe) {
-    $sizeMB = [math]::Round((Get-Item $OutputExe).Length / 1MB, 1)
+    $exeHash  = (Get-FileHash $OutputExe -Algorithm SHA256).Hash.ToUpper()
+    $sizeMB   = [math]::Round((Get-Item $OutputExe).Length / 1MB, 1)
+    $buildTs  = Get-Date -Format 'yyyy-MM-ddTHH:mm:ssZ'
+    $pyVerStr = (& $Python --version 2>&1).ToString().Trim()
+
+    $sumsContent = @"
+# SHA256SUMS -- workflow_gui Windows build
+# Generated  : $buildTs
+# Python     : $pyVerStr
+# PyInstaller: $PYINSTALLER_VERSION
+# Source hash: $srcHash  workflow_gui.py
+
+$exeHash  workflow_gui.exe
+"@
+    Set-Content -Path $SumsFile -Value $sumsContent -Encoding UTF8
+
     Write-Host ""
     Write-Host "Build SUCCEEDED" -ForegroundColor Green
     Write-Host "  $OutputExe  ($sizeMB MB)"
+    Write-Host "  SHA-256: $exeHash"
+    Write-Host "  Checksum file: $SumsFile"
+    Write-Host ""
+    Write-Host "Verification:"
+    Write-Host "  (Get-FileHash dist\workflow_gui.exe -Algorithm SHA256).Hash.ToUpper()"
+    Write-Host "  Compare to: $exeHash"
     Write-Host ""
     Write-Host "Usage:"
     Write-Host "  dist\workflow_gui.exe"

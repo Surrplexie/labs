@@ -11,6 +11,19 @@ Tracks breaking and non-breaking changes to the two machine-readable contracts:
 
 **Initial schema.** Both contracts defined at version 1.
 
+### Non-breaking additions (2026-05-11) -- build hardening
+
+No schema fields changed. The following infrastructure was added alongside schema v1:
+
+- `30_scripts/build_requirements.txt` -- pinned PyInstaller version (`6.20.0`) for
+  reproducible builds. Both `build_exe.ps1` and `build_linux.sh` now use this pin and
+  emit `dist/SHA256SUMS.txt` (source hash + binary hash + build metadata).
+- `.github/workflows/release.yml` -- tag-triggered CI: integrity gate, pinned build,
+  CycloneDX SBOM (`sbom.cdx.json`), SHA256SUMS, and GitHub Release publication.
+- `RELEASE-VERIFICATION.md` -- user-facing guide for verifying any released binary.
+- `dist/SHA256SUMS.txt`, `dist/sbom.cdx.json`, `dist/RELEASE_NOTES_FRAGMENT.md` added
+  to `.gitignore` (CI-generated, not committed to source).
+
 ### frontmatter.schema.json v1
 
 Required fields:

@@ -216,9 +216,15 @@ dist/_build_tmp/
 dist/_spec/
 dist/workflow_gui
 dist/workflow_gui.exe
+dist/SHA256SUMS.txt
+dist/RELEASE_NOTES_FRAGMENT.md
+dist/sbom.cdx.json
 *.spec
 # GUI config (local machine settings, not shared)
 30_scripts/.workflow_gui_config.json
+
+# Whitelist build_requirements.txt (pinned deps, committed intentionally)
+!30_scripts/build_requirements.txt
 
 # ---------------------------------------------------------------------------
 # Logs & temp files

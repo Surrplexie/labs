@@ -1,0 +1,220 @@
+name: Release Build
+
+# Triggered only by a tag push matching v* (e.g. v1.0.0).
+# Builds the Windows .exe, generates SHA256SUMS, and attaches both to a
+# GitHub Release.
+#
+# This is the ONLY release workflow in this repository.
+# See README.md and RELEASE-VERIFICATION.md for the release policy.
+on:
+  push:
+    tags:
+      - "v[0-9]*"
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Job 1: Integrity gate -- same checks as every push, run first.
+  # The release is blocked if any structural FAIL is found.
+  # ---------------------------------------------------------------------------
+  integrity:
+    name: Pre-release integrity check
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Structural integrity (validate.ps1)
+        shell: pwsh
+        run: |
+          & powershell -ExecutionPolicy Bypass `
+            -File "${{ github.workspace }}\30_scripts\validate.ps1" `
+            -Root "${{ github.workspace }}"
+          exit $LASTEXITCODE
+
+      - name: Redaction check (redact-check.ps1)
+        shell: pwsh
+        run: |
+          & powershell -ExecutionPolicy Bypass `
+            -File "${{ github.workspace }}\30_scripts\redact-check.ps1" `
+            -Root "${{ github.workspace }}"
+          exit $LASTEXITCODE
+
+  # ---------------------------------------------------------------------------
+  # Job 2: Windows build -- pinned PyInstaller, SHA256SUMS output.
+  # ---------------------------------------------------------------------------
+  build-windows:
+    name: Build Windows .exe
+    runs-on: windows-latest
+    needs: integrity
+    outputs:
+      sha256: ${{ steps.checksum.outputs.sha256 }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install pinned build dependencies
+        shell: pwsh
+        run: |
+          python -m pip install -r 30_scripts/build_requirements.txt
+
+      - name: Confirm PyInstaller version
+        shell: pwsh
+        run: |
+          $pin = (Get-Content 30_scripts/build_requirements.txt |
+                  Select-String 'pyinstaller==').ToString().Split('==')[1].Trim()
+          $inst = (python -m pip show pyinstaller | Select-String 'Version:').ToString().Split(':')[1].Trim()
+          if ($pin -ne $inst) {
+            Write-Error "PyInstaller version mismatch: pinned=$pin installed=$inst"
+            exit 1
+          }
+          Write-Host "PyInstaller $inst matches pin $pin" -ForegroundColor Green
+
+      - name: Build .exe (build_exe.ps1 --SkipPipInstall)
+        shell: pwsh
+        run: |
+          powershell -ExecutionPolicy Bypass `
+            -File 30_scripts\build_exe.ps1 `
+            -SkipPipInstall
+
+      - name: Compute checksum
+        id: checksum
+        shell: pwsh
+        run: |
+          $hash = (Get-FileHash dist\workflow_gui.exe -Algorithm SHA256).Hash.ToUpper()
+          Write-Host "SHA-256: $hash"
+          echo "sha256=$hash" >> $env:GITHUB_OUTPUT
+
+      - name: Write release notes fragment
+        shell: pwsh
+        run: |
+          $tag    = "${{ github.ref_name }}"
+          $hash   = "${{ steps.checksum.outputs.sha256 }}"
+          $pin    = (Get-Content 30_scripts/build_requirements.txt |
+                    Select-String 'pyinstaller==').ToString().Trim()
+          $pyver  = (python --version).ToString().Trim()
+          $ts     = Get-Date -Format 'yyyy-MM-ddTHH:mm:ssZ'
+          $notes  = @"
+          ## $tag -- workflow_gui Windows build
+
+          | Field | Value |
+          |-------|-------|
+          | Release tag | $tag |
+          | Built on | $ts |
+          | Python | $pyver |
+          | $pin | |
+          | SHA-256 (workflow_gui.exe) | ``$hash`` |
+
+          ### Verify before running
+
+          PowerShell:
+          ``````
+          (Get-FileHash workflow_gui.exe -Algorithm SHA256).Hash.ToUpper()
+          ``````
+          Must equal: ``$hash``
+
+          See [RELEASE-VERIFICATION.md](./RELEASE-VERIFICATION.md) for full verification steps.
+
+          ### Contents
+
+          This release contains only the workflow_gui helper binary and its checksum file.
+          It does not contain sample data, analysis notes, credentials, or any other
+          repository content. See README.md for the release policy.
+          "@
+          Set-Content dist/RELEASE_NOTES_FRAGMENT.md $notes -Encoding UTF8
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-build
+          path: |
+            dist/workflow_gui.exe
+            dist/SHA256SUMS.txt
+            dist/RELEASE_NOTES_FRAGMENT.md
+          retention-days: 7
+
+  # ---------------------------------------------------------------------------
+  # Job 3: Generate SBOM for the frozen dependency tree.
+  # Uses pip's built-in SBOM output (cyclonedx format via pip-licenses).
+  # ---------------------------------------------------------------------------
+  sbom:
+    name: Generate SBOM
+    runs-on: windows-latest
+    needs: build-windows
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install build deps + cyclonedx tool
+        shell: pwsh
+        run: |
+          python -m pip install -r 30_scripts/build_requirements.txt
+          python -m pip install cyclonedx-bom --quiet
+
+      - name: Generate CycloneDX SBOM
+        shell: pwsh
+        run: |
+          python -m cyclonedx_py environment --output-format json `
+            --output-file dist/sbom.cdx.json
+          Write-Host "SBOM generated: dist/sbom.cdx.json"
+
+      - name: Upload SBOM artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom
+          path: dist/sbom.cdx.json
+          retention-days: 7
+
+  # ---------------------------------------------------------------------------
+  # Job 4: Publish GitHub Release with all artifacts.
+  # ---------------------------------------------------------------------------
+  publish:
+    name: Publish GitHub Release
+    runs-on: ubuntu-latest
+    needs: [build-windows, sbom]
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download Windows build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: windows-build
+          path: release-assets/
+
+      - name: Download SBOM artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: sbom
+          path: release-assets/
+
+      - name: Read release notes fragment
+        id: notes
+        run: |
+          echo "body<<EOF" >> $GITHUB_OUTPUT
+          cat release-assets/RELEASE_NOTES_FRAGMENT.md >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "${{ github.ref_name }} -- workflow_gui"
+          body: ${{ steps.notes.outputs.body }}
+          files: |
+            release-assets/workflow_gui.exe
+            release-assets/SHA256SUMS.txt
+            release-assets/sbom.cdx.json
+          draft: false
+          prerelease: false
