@@ -1,8 +1,13 @@
-# sample_01 — static triage
+# sample_01 -- static triage
 
-**SHA256:** `ffd448f1e3038c6c324570ab12dbf65ddbef471f0ababfb9f2a3bb47eead5bd7`
+| Field | Value |
+|--------|--------|
+| **SHA256** | `ffd448f1e3038c6c324570ab12dbf65ddbef471f0ababfb9f2a3bb47eead5bd7` |
+| **Name / tag (Bazaar)** | `Updater_v2.211.exe` |
+| **Date analyzed** | 2026-05-06 (CFF NTFS timestamps on VM) |
+| **VM user** | `win11` |
 
-**Performed on VM:** 2026-05-06 (from file timestamps in CFF) · User `win11` · Sample opened as  
+**Performed on VM:** 2026-05-06 (from file timestamps in CFF) -- User `win11` -- Sample opened as  
 `C:\Users\win11\Downloads\ffd448f1e3038c6c324570ab12dbf65ddbef471f0ababfb9f2a3bb47eead5bd7\ffd448f1e3038c6c324570ab12dbf65ddbef471f0ababfb9f2a3bb47eead5bd7.exe`  
 _(tab title in shots; may match `Updater_v2.211.exe` if renamed — same SHA256 target.)_
 
@@ -85,4 +90,6 @@ The object is a **32-bit PE** whose on-disk bulk is an **NSIS 3.04 (zlib, solid)
 | 2 | `IMG_6039.HEIC` / `IMG_6039.png` | HxD |
 | 3 | `IMG_6040.HEIC` / `IMG_6040.png` | PEStudio |
 | 4 | `IMG_6041.HEIC` / `IMG_6041.png` | DIE |
-| 5 | `IMG_6042.HEIC` / `IMG_6042.png` | **Dynamic** — fake error UI (`02_dynamic`) |
+| 5 | `IMG_6042.HEIC` / `IMG_6042.png` | **Dynamic** -- fake error UI (`02_dynamic`) |
+
+Cross-references: [acquisition](../00_original/sample_01.md) | [dynamic](../02_dynamic/sample_01.md) | [findings](../03_findings/sample_01.md) | [screenshots](../50_screenshots/sample_01/)

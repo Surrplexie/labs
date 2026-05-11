@@ -85,7 +85,9 @@ These are **string/rule matches**, not a confirmed verdict in isolation.
 
 ## Cross-links
 
-- Static notes: `01_static/sample_01.md`
-- Dynamic notes: `02_dynamic/sample_01.md`
-- Findings / portfolio: `03_findings/sample_01.md`
-- Screenshots (host): `50_screenshots/sample_01/` — see `SHOT_INDEX.txt` there.
+- Static notes: [`01_static/sample_01.md`](../01_static/sample_01.md)
+- Dynamic notes: [`02_dynamic/sample_01.md`](../02_dynamic/sample_01.md)
+- Findings / portfolio: [`03_findings/sample_01.md`](../03_findings/sample_01.md)
+- IOCs: [`40_iocs/indicators.csv`](../40_iocs/indicators.csv)
+- Screenshots (host): [`50_screenshots/sample_01/`](../50_screenshots/sample_01/) -- see `SHOT_INDEX.txt` there.
+- Case series: [`20_notes/case-series/NSIS-installers.md`](../20_notes/case-series/NSIS-installers.md)
