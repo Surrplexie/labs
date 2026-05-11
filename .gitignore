@@ -70,8 +70,8 @@
 *.psm1
 
 # NOTE: The above .ps1 exclusion applies to any real sample-derived scripts.
-# Scaffold/utility scripts in 30_scripts/ that are explicitly safe reference
-# files should be force-added with: git add -f 30_scripts/<file>.ps1
+# Scaffold/utility scripts in 30_scripts/ are whitelisted below.
+!30_scripts/*.ps1
 
 # ---------------------------------------------------------------------------
 # Office macro-enabled documents
@@ -203,6 +203,12 @@ Session.vim
 # Emacs
 \#*\#
 .\#*
+
+# ---------------------------------------------------------------------------
+# Generated output (machine-readable export — not committed)
+# ---------------------------------------------------------------------------
+dist/
+summary.json
 
 # ---------------------------------------------------------------------------
 # Logs & temp files

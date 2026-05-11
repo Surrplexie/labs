@@ -1,3 +1,29 @@
+---
+sample_id: sample_01
+sha256: ffd448f1e3038c6c324570ab12dbf65ddbef471f0ababfb9f2a3bb47eead5bd7
+phase: findings
+analyst: Surrplexie
+date_acquired: "2026-05-06"
+date_analyzed: "2026-05-06"
+status: static_and_initial_dynamic_done
+verdict: suspicious
+family_guess: "NSIS installer / fake alert deception"
+family_confidence: medium-high
+tags:
+  - nsis
+  - fake-alert
+  - deceptive-ui
+  - installer
+  - pijawoBridge
+mitre_techniques:
+  - T1036    # Masquerading — posed as legitimate updater (Updater_v2.211.exe)
+  - T1027    # Obfuscated Files or Information — max-entropy NSIS compressed overlay
+  - T1583.006  # Acquire Infrastructure: Web Services — hosted via Pages.dev + GitHub releases
+mb_url: "https://malwarebazaar.abuse.ch/sample/ffd448f1e3038c6c324570ab12dbf65ddbef471f0ababfb9f2a3bb47eead5bd7/"
+procmon_run: false
+dynamic_complete: false
+---
+
 # sample_01 — findings (portfolio slice)
 
 **SHA256:** `ffd448f1e3038c6c324570ab12dbf65ddbef471f0ababfb9f2a3bb47eead5bd7`
