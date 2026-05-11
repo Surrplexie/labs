@@ -57,7 +57,8 @@ It is **not** intended for production deployment, operational use, or redistribu
 | Learn what each tool signal means | [`20_notes/tooling-reference.md`](./20_notes/tooling-reference.md) |
 | Use or understand the automation scripts | [`30_scripts/README.md`](./30_scripts/README.md) |
 | Access raw IOC data | [`40_iocs/indicators.csv`](./40_iocs/indicators.csv) |
-| Understand the full workflow | [Complete Workflow Guide](#complete-workflow-guide) below |
+| Walk through the full workflow step by step | [`WORKFLOW.md`](./WORKFLOW.md) |
+| Understand the full workflow (summary) | [Complete Workflow Guide](#complete-workflow-guide) below |
 
 ---
 
