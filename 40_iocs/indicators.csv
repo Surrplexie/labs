@@ -1,0 +1,14 @@
+sample_id,type,value,source,first_seen,notes
+sample_01,sha256,ffd448f1e3038c6c324570ab12dbf65ddbef471f0ababfb9f2a3bb47eead5bd7,malwarebazaar,2026-05-06T22:23:04Z,file object on MB
+sample_01,sha1,e4c0c9b3d3f85cb5e4015825a4ee87282ff8703f,malwarebazaar,,align with Bazaar
+sample_01,md5,974e9813d86ec7eafb5a4e62f78d0d55,malwarebazaar,,align with Bazaar
+sample_01,filename,Updater_v2.211.exe,malwarebazaar,,claimed name — verify on disk after download
+sample_01,imphash,b34f154ec913d2d2c435cbd644e91687,malwarebazaar,,Bazaar cites overlap with unrelated families — corroborate
+sample_01,url,http://itchupdate-ah1.pages.dev/,malwarebazaar_listing,,referenced on Bazaar page
+sample_01,url,https://github.com/Psychoxox/probable-octo-giggle/releases/download/soffft/Updater_v2.211.zip,malwarebazaar_listing,,zip delivery referenced on Bazaar page — not verified same PE without hash compare
+sample_01,url,https://www.virustotal.com/gui/file/ffd448f1e3038c6c324570ab12dbf65ddbef471f0ababfb9f2a3bb47eead5bd7/detection,malwarebazaar_listing,,VT for same SHA256
+sample_01,fuzzy_ssdeep,"1572864:5t9IKPUjRWYs+v4//v/bwcEOMOUHwDu8vkjUOle+dclSX7:5UKMjRWwLFOCwS8sjUOle+drX7",malwarebazaar,,
+sample_01,tlsh,T17AF73308526CD36BEDFEC5BAC7C0D7E1D340C64F9EBA980E635E3898B5414C601DA7A6,malwarebazaar,,
+sample_01,software_name,pijawoBridge,static_pe_version_20260506,,CFF_PEStudio_sample_01
+sample_01,ui_title,HGWJY,dynamic_IMG_6042,,gibberish dialog
+sample_01,ui_string,Critical systeam error 0x00305353321,dynamic_IMG_6042,,typo systeam suggests fake alert
