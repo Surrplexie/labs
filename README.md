@@ -62,6 +62,7 @@ It is **not** intended for production deployment, operational use, or redistribu
 | Access raw IOC data | [`40_iocs/indicators.csv`](./40_iocs/indicators.csv) |
 | Walk through the full workflow step by step | [`WORKFLOW.md`](./WORKFLOW.md) |
 | Use the GUI to fill phase files automatically | [`30_scripts/workflow_gui.py`](./30_scripts/workflow_gui.py) |
+| Step-by-step GUI usage (Windows and Linux) and disclaimers | [`30_scripts/WORKFLOW-GUI.md`](./30_scripts/WORKFLOW-GUI.md) |
 | Understand the full workflow (summary) | [Complete Workflow Guide](#complete-workflow-guide) below |
 
 ---
@@ -242,6 +243,10 @@ excluded from the repo by `.gitignore`.
 The GUI requires no external Python packages — only the standard library `tkinter`
 (included with Python on Windows; install `python3-tk` on Debian/Ubuntu or
 `python3-tkinter` on Fedora for the native script).
+
+**Full usage walkthrough (Windows and Linux), field-by-field examples, and extended
+legal-style disclaimers** (no malware shipped; use at your own risk; hash verification
+for any pre-built binary): see [`30_scripts/WORKFLOW-GUI.md`](./30_scripts/WORKFLOW-GUI.md).
 
 ---
 

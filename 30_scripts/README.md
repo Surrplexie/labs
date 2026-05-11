@@ -3,12 +3,15 @@
 PowerShell lifecycle and hygiene scripts for the labs malware triage logbook.
 All scripts require PowerShell 5.1+ and run from anywhere (they resolve the repo root automatically).
 
+**Workflow GUI (cross-platform):** [`workflow_gui.py`](./workflow_gui.py) -- paste-once autofill for all phase Markdown files. **Usage, Windows/Linux steps, and disclaimers:** [`WORKFLOW-GUI.md`](./WORKFLOW-GUI.md).
+
 ---
 
 ## Quick reference
 
 | Script | Purpose | When to run |
 |--------|---------|-------------|
+| `workflow_gui.py` | GUI: autofill phase files from pasted metadata | Optional; alternative or complement to `new_sample.ps1` |
 | `new_sample.ps1` | Scaffold a new sample slot | Before starting a new sample |
 | `close_sample.ps1` | Advance slot status, print close checklist | After each analysis phase |
 | `validate.ps1` | Structural integrity check | Before any commit |
