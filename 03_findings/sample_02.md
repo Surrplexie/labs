@@ -1,49 +1,60 @@
 ﻿---
 schema_version: 1
+engagement_kind: file
 sample_id: sample_02
+name_tag: ""
 sha256: ""
 phase: findings
 analyst: Surrplexie
-date_acquired: ""
-date_analyzed: ""
+date_acquired: "2026-05-12"
+date_analyzed: "2026-05-12"
 status: queued
 verdict: unknown
+sample_type: PE
 family_guess: ""
-family_confidence: ""
-tags: []
-mitre_techniques: []
+family_confidence: medium
+tags:
+  - exe
+mitre_techniques:
+- T1027    # Obfuscated Files or Information
 mb_url: ""
 procmon_run: false
 dynamic_complete: false
 ---
 
-schema_version: 1
 # sample_02 -- findings (portfolio slice)
 
-**SHA256:** <!-- fill --> | **Confidence:** <!-- low / medium / medium-high / high -->
+**SHA256:** ``<!-- fill -->``
 
-**Analyst one-liner:** <!-- one sentence verdict summary -->
+**Confidence:** <!-- overall confidence statement with reasoning -->
+
+**Analyst one-liner:** <!-- single sentence summary -->
+
+Cross-references: [acquisition](../00_original/sample_02.md) | [static](../01_static/sample_02.md) | [dynamic](../02_dynamic/sample_02.md) | [screenshots](../50_screenshots/sample_02/) | [IOCs](../40_iocs/indicators.csv)
 
 ## Verdict
 
-- **Classification (working):**
-- **Why:**
+- **Classification:** <!-- benign / suspicious / malicious / unknown -->
+- **Why (static):** <!-- key static signals -->
+- **Why (dynamic):** <!-- key dynamic signals; or "not yet run" -->
 
-## IOCs (keep `40_iocs/indicators.csv` in sync)
+## IOCs (keep 40_iocs/indicators.csv in sync)
 
 | Type | Value | Notes |
 |------|-------|-------|
-| sha256 | | |
+| sha256 | | Canonical sample |
+| sha1 | | |
+| md5 | | |
 
 ## What you proved
 
-- **Static:**
-- **Dynamic:**
+- <!-- Claim 1: evidence source, confidence level -->
+- <!-- Claim 2: evidence source, confidence level -->
 
 ## Gaps / next steps
 
-1.
+1. <!-- What is not yet confirmed -->
 
 ## Public-safe blurb
 
-<!-- Self-contained portfolio paragraph. No internal paths, usernames, or VM details. -->
+<!-- Portfolio paragraph: no internal paths, usernames, or PII. -->

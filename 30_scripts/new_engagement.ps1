@@ -69,7 +69,10 @@ param(
 
     [string]$Analyst = 'Surrplexie',
     [string]$Platform = '',
-    [string]$Title    = ''
+    [string]$Title    = '',
+
+    [switch]$OverwriteEmpty,
+    [switch]$ReserveOnly
 )
 
 $root = Split-Path -Parent $PSScriptRoot
@@ -88,9 +91,16 @@ $csvPath = Join-Path $root 'samples_tracker.csv'
 if (Test-Path $csvPath) {
     $tracker = Import-Csv $csvPath
     $existing = $tracker | Where-Object { $_.sample_id -eq $id }
-    if ($existing -and $existing.status -ne 'empty') {
+    if ($existing -and $existing.status.Trim().ToLower() -ne 'empty') {
+        if ($OverwriteEmpty) {
+            Write-Warning "Slot $id is not empty (status '$($existing.status)'). Refusing overwrite."
+            exit 1
+        }
         Write-Warning "Slot $id already exists with status '$($existing.status)'. Use a different number or clear the slot first."
         exit 1
+    }
+    if ($existing -and $existing.status.Trim().ToLower() -eq 'empty') {
+        $OverwriteEmpty = $true
     }
 }
 
@@ -109,12 +119,13 @@ function New-PhaseFile {
     $folder = Join-Path $root $dir
     if (-not (Test-Path $folder)) { New-Item -ItemType Directory -Path $folder | Out-Null }
     $path = Join-Path $folder "$id.md"
-    if (Test-Path $path) {
+    if ((Test-Path $path) -and -not $OverwriteEmpty) {
         Write-Warning "  $dir\$id.md already exists -- skipping."
         return
     }
+    $verb = if (Test-Path $path) { 'Updated' } else { 'Created' }
     Set-Content -Path $path -Value $content -Encoding UTF8
-    Write-Host "  Created: $dir\$id.md" -ForegroundColor Green
+    Write-Host "  $verb`: $dir\$id.md" -ForegroundColor Green
 }
 
 # ============================================================
@@ -1278,9 +1289,10 @@ if (-not (Test-Path $ssDir)) {
     Write-Host "  Created: 50_screenshots\$id\" -ForegroundColor Green
 }
 
-if (-not (Test-Path $shotIndex)) {
-    Set-Content -Path $shotIndex -Value (Apply-Template $tmplShotIndex) -Encoding UTF8
-    Write-Host "  Created: 50_screenshots\$id\SHOT_INDEX.txt" -ForegroundColor Green
+if ((-not (Test-Path $shotIndex)) -or $OverwriteEmpty) {
+  $shotVerb = if (Test-Path $shotIndex) { 'Updated' } else { 'Created' }
+  Set-Content -Path $shotIndex -Value (Apply-Template $tmplShotIndex) -Encoding UTF8
+  Write-Host "  $shotVerb`: 50_screenshots\$id\SHOT_INDEX.txt" -ForegroundColor Green
 }
 
 if (-not (Get-ChildItem $ssDir -File | Where-Object { $_.Name -ne 'SHOT_INDEX.txt' })) {
@@ -1306,28 +1318,36 @@ if (Test-Path $csvPath) {
     $cols = $tracker[0].PSObject.Properties.Name
 
     if ($existing) {
-        # Update the empty slot in place
-        $existing.status          = $initStatus
-        $existing.name_tag        = $titleVal
-        if ($cols -contains 'engagement_kind') { $existing.engagement_kind = $Kind }
-        if ($cols -contains 'platform')        { $existing.platform        = $platformVal }
-        if ($cols -contains 'date_started')    { $existing.date_started    = $date }
-        $tracker | Export-Csv $csvPath -NoTypeInformation -Encoding UTF8
-        Write-Host "  Updated tracker: $id -> $initStatus" -ForegroundColor Green
+        if ($ReserveOnly) {
+            if ($cols -contains 'engagement_kind') { $existing.engagement_kind = $Kind }
+            if ($cols -contains 'notes' -and [string]::IsNullOrWhiteSpace($existing.notes)) {
+                $existing.notes = 'Reserve -- fill when assigned'
+            }
+            $tracker | Export-Csv $csvPath -NoTypeInformation -Encoding UTF8
+            Write-Host "  Tracker: $id kept empty (reserve slot)" -ForegroundColor Green
+        } else {
+            $existing.status          = $initStatus
+            $existing.name_tag        = $titleVal
+            if ($cols -contains 'engagement_kind') { $existing.engagement_kind = $Kind }
+            if ($cols -contains 'platform')        { $existing.platform        = $platformVal }
+            if ($cols -contains 'date_started')    { $existing.date_started    = $date }
+            $tracker | Export-Csv $csvPath -NoTypeInformation -Encoding UTF8
+            Write-Host "  Updated tracker: $id -> $initStatus" -ForegroundColor Green
+        }
     } else {
-        # Append new row
         $newRow = [ordered]@{}
         foreach ($col in $cols) { $newRow[$col] = '' }
-        $newRow['sample_id']       = $id
-        $newRow['status']          = $initStatus
-        $newRow['name_tag']        = $titleVal
+        $newRow['sample_id'] = $id
+        $newRow['status']    = if ($ReserveOnly) { 'empty' } else { $initStatus }
+        $newRow['name_tag']  = $titleVal
         if ($cols -contains 'engagement_kind') { $newRow['engagement_kind'] = $Kind }
         if ($cols -contains 'platform')        { $newRow['platform']        = $platformVal }
-        if ($cols -contains 'date_started')    { $newRow['date_started']    = $date }
+        if ($cols -contains 'date_started')    { $newRow['date_started']    = if ($ReserveOnly) { '' } else { $date } }
+        if ($cols -contains 'notes')           { $newRow['notes']           = 'Reserve -- fill when assigned' }
 
         $tracker += [pscustomobject]$newRow
         $tracker | Export-Csv $csvPath -NoTypeInformation -Encoding UTF8
-        Write-Host "  Appended tracker: $id" -ForegroundColor Green
+        Write-Host "  Appended tracker: $id ($($newRow['status']))" -ForegroundColor Green
     }
 } else {
     Write-Warning "samples_tracker.csv not found; tracker not updated."

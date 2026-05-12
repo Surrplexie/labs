@@ -1,73 +1,62 @@
 ﻿# sample_05 -- original receipt (host log)
 
 **Purpose:** Record identification and sourcing before/at acquisition. Binaries stay VM-only.
-Populate from MalwareBazaar *before* download.
 
 | Field | Value |
-|--------|--------|
-| **Sample ID** | `sample_05` |
-| **MalwareBazaar URL** | |
-| **SHA256** | |
-| **SHA1** | |
-| **MD5** | |
-| **File name (claimed)** | |
-| **MIME / type** | |
-| **Size** | |
-| **First seen (Bazaar)** | |
-| **Last seen** | |
-| **Bazaar verdict** | |
-| **Vendor detections** | |
+|-------|-------|
+| **Sample ID** | sample_05 |
+| **MalwareBazaar URL** | <!-- https://malwarebazaar.abuse.ch/sample/SHA256/ --> |
+| **SHA256** | <!-- 64-char hex --> |
+| **SHA1** | <!-- 40-char hex --> |
+| **MD5** | <!-- 32-char hex --> |
+| **File name (claimed)** | <!-- e.g. invoice.exe --> |
+| **Mime / type** | <!-- application/x-dosexec --> |
+| **Size** | <!-- bytes --> |
+| **First seen (Bazaar)** | <!-- YYYY-MM-DD --> |
+| **Bazaar verdict** | <!-- unknown / malicious --> |
+| **Vendor detections** | <!-- count --> |
 
-## Delivery & context
+## Delivery and context
 
 | Field | Value |
-|--------|--------|
-| **Delivery method** | |
-| **Reporter** | |
-| **Tags** | |
-| **Magika** | |
-| **TrID (top)** | |
+|-------|-------|
+| **Delivery method** | <!-- web / email / unknown --> |
+| **Reporter** | <!-- handle or blank --> |
+| **Tags (Bazaar)** | <!-- exe / doc / etc --> |
+| **Magika** | <!-- pebin / etc --> |
+| **TrID (top)** | <!-- top match --> |
 
-## Hashes for clustering / lookups
+## Hashes for clustering
 
 | Field | Value | Notes |
-|--------|--------|--------|
-| **imphash** | | |
-| **ssdeep** | | |
-| **TLSH** | | |
-| **dhash icon** | | |
+|-------|-------|-------|
+| **imphash** | | Clustering hint only |
+| **ssdeep** | | Fuzzy similarity |
+| **TLSH** | | Locality-sensitive hash |
 
-## URLs referenced on Bazaar page (IOC leads)
+## URLs from Bazaar page
 
-| Kind | URL / note |
-|------|------------|
+| Kind | URL |
+|------|-----|
 | | |
 
 ## YARA rules flagged
 
-| Rule | Author | Implication (rough) |
-|------|--------|---------------------|
+| Rule | Author | Implication |
+|------|--------|-------------|
 | | | |
-
-## Bazaar intelligence snippets
-
-| Metric | Value |
-|--------|--------|
-| `# of uploads` | |
-| `# of downloads` | |
-| **Origin country** | |
 
 ## Acquisition checklist (VM)
 
-- [ ] Download **inside VM only** (Bazaar login / API)
-- [ ] **SHA256 verified on VM** -- matches Bazaar value
-- [ ] VM path documented (no sensitive analyst-machine paths here)
-- [ ] Optional: clean **snapshot taken before** first run
-- [ ] **Never** copy `.exe` / binary to this host logbook PC
+- [ ] Download inside VM only.
+- [ ] SHA256 verified on VM.
+- [ ] Sample path on VM noted.
+- [ ] Never copy binary to host.
 
-## Cross-links
+## Cross-references
 
-- Static notes: `01_static/sample_05.md`
-- Dynamic notes: `02_dynamic/sample_05.md`
-- Findings: `03_findings/sample_05.md`
-- Screenshots: `50_screenshots/sample_05/`
+- Static: [01_static/sample_05.md](../01_static/sample_05.md)
+- Dynamic: [02_dynamic/sample_05.md](../02_dynamic/sample_05.md)
+- Findings: [03_findings/sample_05.md](../03_findings/sample_05.md)
+- IOCs: [40_iocs/indicators.csv](../40_iocs/indicators.csv)
+- Screenshots: [50_screenshots/sample_05/](../50_screenshots/sample_05/)

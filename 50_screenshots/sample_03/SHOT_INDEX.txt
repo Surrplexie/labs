@@ -1,13 +1,14 @@
-﻿sample_03 -- screenshots (host)
+﻿# SHOT_INDEX.txt
+# Screenshot index and evidence hygiene checklist for sample_03
+# Kind: file
+#
+# MAP: file -> what it shows
+# ----------------------------
 
-Evidence hygiene checklist (complete before committing screenshots):
-  [ ] VM username / hostname NOT visible in captured UI (check window titles, path bars)
-  [ ] Analyst host machine paths NOT in any screenshot
-  [ ] No personal information visible (email, real names, internal domains)
-  [ ] EXIF metadata stripped: run   30_scripts\strip-exif.ps1
-  [ ] HEIC originals converted to PNG before committing
-  [ ] Redact check passed: run       30_scripts\redact-check.ps1
-
-Screenshot map:
-  (add rows as you capture -- format: FILENAME -- tool/step -- what it shows)
-
+# HYGIENE CHECKLIST
+# ------------------
+# [ ] All screenshots taken inside VM only
+# [ ] HEIC / iPhone originals converted to PNG (pillow / heif-convert / Preview)
+# [ ] exiftool strip run before commit: strip-exif.ps1
+# [ ] No screenshots contain host machine username, internal paths, or credentials
+# [ ] SHOT_INDEX updated with file list below

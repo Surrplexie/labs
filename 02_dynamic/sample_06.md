@@ -1,62 +1,64 @@
-﻿# sample_06 -- dynamic triage
+﻿# sample_06 -- dynamic triage (PE)
 
-**SHA256:** <!-- fill --> | **Run date:** <!-- fill -->
+| Field | Value |
+|-------|-------|
+| **SHA256** | <!-- from 00_original --> |
+| **Date analyzed** | 2026-05-12 |
+| **VM type** | Windows 11 lab VM (user win11) |
+| **AV / real-time protection** | Off |
+| **Snapshot name** | <!-- e.g. clean_2026-05-12 --> |
+| **Instrumentation** | <!-- Procmon / ProcExp / TCPView / Wireshark --> |
 
-## Pre-flight checklist
+Cross-references: [findings](../03_findings/sample_06.md) | [static](../01_static/sample_06.md) | [acquisition](../00_original/sample_06.md) | [screenshots](../50_screenshots/sample_06/)
 
-- [ ] Clean snapshot baseline confirmed
-- [ ] **Procmon** capture started (boot or pre-run)
-- [ ] **Process Explorer** open
-- [ ] **TCPView** / Wireshark running (if network capture needed)
-- [ ] AV / real-time protection status noted
+---
+
+## Pre-flight
+
+- [ ] Clean snapshot restored.
+- [ ] Procmon started (filter by process name).
+- [ ] Process Explorer open.
+- [ ] TCPView open.
+- [ ] AV confirmed off.
 
 ## Execution
 
-- **How launched:** <!-- double-click / cmd / script -->
-- **User context:** <!-- standard user / elevated -->
-- **Observed UX:** <!-- dialogs, errors, silent, etc. -->
+- **How launched:** <!-- double-click / cmd / PowerShell -->
+- **On-disk name:** <!-- path on VM -->
+- **User context:** <!-- standard / elevated -->
+- **Immediate UX:** <!-- what appeared on screen -->
 
 ## Process tree
 
-| Parent | Child | Command line / notes |
-|--------|--------|---------------------|
-| | | |
+| PID | Parent PID | Name | Command line / notes |
+|-----|-----------|------|---------------------|
+| | | | |
 
-## File system
+## File system (Procmon WriteFile / CreateFile)
 
 | Path | Operation | Notes |
 |------|-----------|-------|
 | | | |
 
-## Registry
+## Registry (Procmon RegSetValue)
 
-| Key | Value name | Data / notes |
-|-----|------------|--------------|
-| | | |
-
-## Network
-
-| Proto | Remote host | Port | Notes |
-|-------|-------------|------|-------|
+| Key | Value name | Data | Notes |
+|-----|-----------|------|-------|
 | | | | |
 
-## Dynamic summary
+## Network (TCPView / Wireshark)
 
-<!-- Combine static context with observed runtime behavior -->
+| Proto | Remote host | Port | Notes |
+|-------|------------|------|-------|
+| | | | |
 
-## Post-run checklist
+## Post-run observations
 
-- [ ] Procmon log exported and filtered (CSV)
-- [ ] Screenshots captured and indexed in SHOT_INDEX.txt
-- [ ] IOCs appended to `40_iocs/indicators.csv`
-- [ ] VM snapshot **reverted**
+- Services: <!-- any new? -->
+- Scheduled tasks: <!-- any new? -->
+- Injected modules: <!-- any? -->
+- VM snapshot reverted: [ ]
 
-## Screenshots
+## Dynamic summary (portfolio-ready)
 
-`50_screenshots/sample_06/`
-
-## Cross-links
-
-- Original: `00_original/sample_06.md`
-- Static: `01_static/sample_06.md`
-- Findings: `03_findings/sample_06.md`
+<!-- What the sample did: drops, persistence, network, deception. -->
