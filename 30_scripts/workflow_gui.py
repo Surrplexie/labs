@@ -36,7 +36,7 @@ except ImportError:
 # ---------------------------------------------------------------------------
 
 APP_TITLE   = "Workflow HUD -- Labs Engagement Assistant"
-APP_VERSION = "3.0.0"
+APP_VERSION = "3.0.1"
 CONFIG_FILE = Path(__file__).parent / ".workflow_gui_config.json"
 
 VERDICTS     = ["suspicious", "malicious", "benign", "unknown"]
@@ -139,41 +139,58 @@ def save_config(cfg: dict) -> None:
     except Exception:
         pass
 
-def next_sample_number(root: Path) -> int:
+TRACKER_ENCODING = "utf-8-sig"
+
+
+def normalise_tracker_row(row: dict) -> dict:
+    return {
+        k.lstrip("\ufeff").strip().strip('"'): (v if v is not None else "")
+        for k, v in row.items()
+    }
+
+
+def read_tracker_rows(root: Path) -> list:
     tracker = root / "samples_tracker.csv"
     if not tracker.exists():
-        return 1
-    nums = []
+        return []
     try:
-        with open(tracker, newline="", encoding="utf-8") as f:
-            for row in csv.DictReader(f):
-                m = re.match(r"sample_(\d+)", row.get("sample_id", ""))
-                if m:
-                    nums.append(int(m.group(1)))
+        with open(tracker, newline="", encoding=TRACKER_ENCODING) as f:
+            return [normalise_tracker_row(row) for row in csv.DictReader(f)]
     except Exception:
-        pass
-    return max(nums) + 1 if nums else 1
+        return []
+
+
+def next_sample_number(root: Path) -> int:
+    """First tracker row with status empty; otherwise max slot + 1."""
+    slots = []
+    for row in read_tracker_rows(root):
+        sid = row.get("sample_id", "").strip()
+        m = re.match(r"sample_(\d+)", sid)
+        if not m:
+            continue
+        status = row.get("status", "empty").strip().lower()
+        slots.append((int(m.group(1)), status))
+    if not slots:
+        return 1
+    for n, status in sorted(slots):
+        if status == "empty":
+            return n
+    return max(n for n, _ in slots) + 1
+
 
 def list_tracker_rows(root: Path) -> list:
-    """Return list of dicts for all non-empty tracker rows."""
-    tracker = root / "samples_tracker.csv"
-    rows = []
-    if tracker.exists():
-        try:
-            with open(tracker, newline="", encoding="utf-8") as f:
-                for row in csv.DictReader(f):
-                    sid = row.get("sample_id", "").strip()
-                    if sid and row.get("status", "empty").strip() != "empty":
-                        rows.append(dict(row))
-        except Exception:
-            pass
-    return rows
+    """Tracker rows with status other than empty (in-use engagements)."""
+    return [
+        row for row in read_tracker_rows(root)
+        if row.get("sample_id", "").strip()
+        and row.get("status", "empty").strip().lower() != "empty"
+    ]
 
 def list_active_sample_ids(root: Path) -> list:
     return [r["sample_id"] for r in list_tracker_rows(root)]
 
 def get_kind_for_slot(root: Path, sid: str) -> str:
-    for row in list_tracker_rows(root):
+    for row in read_tracker_rows(root):
         if row.get("sample_id", "").strip() == sid:
             return row.get("engagement_kind", "file").strip() or "file"
     return "file"
@@ -248,18 +265,14 @@ def patch_frontmatter(findings_path: Path, updates: dict) -> bool:
 
 def set_tracker_status(root: Path, sid: str, status: str) -> None:
     tracker = root / "samples_tracker.csv"
-    if not tracker.exists():
+    rows = read_tracker_rows(root)
+    if not rows:
         return
-    rows, fieldnames = [], []
-    with open(tracker, newline="", encoding="utf-8") as f:
-        reader = csv.DictReader(f)
-        fieldnames = list(reader.fieldnames or [])
-        for row in reader:
-            r = dict(row)
-            if r.get("sample_id") == sid:
-                r["status"] = status
-            rows.append(r)
-    with open(tracker, "w", newline="", encoding="utf-8") as f:
+    fieldnames = list(rows[0].keys())
+    for row in rows:
+        if row.get("sample_id", "").strip() == sid:
+            row["status"] = status
+    with open(tracker, "w", newline="", encoding=TRACKER_ENCODING) as f:
         writer = csv.DictWriter(f, fieldnames=fieldnames, extrasaction="ignore")
         writer.writeheader()
         writer.writerows(rows)
@@ -1209,7 +1222,7 @@ class WorkflowApp(tk.Tk):
             return
         n = next_sample_number(self.repo_root)
         self._ns["num"].set(str(n))
-        self._log(f"Next slot number: {n}")
+        self._log(f"Next open reserve slot: sample_{pad2(n)}")
 
     # -----------------------------------------------------------------------
     # New Engagement -- create
