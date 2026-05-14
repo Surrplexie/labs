@@ -72,7 +72,7 @@ See [`ENGAGEMENTS.md`](./ENGAGEMENTS.md) for the complete kind reference and [`W
 | See all engagements at a glance | [`INDEX.md`](./INDEX.md) |
 | Find by tag, MITRE technique, or kind | [`INDEX.md`](./INDEX.md) cross-reference sections |
 | Read a specific engagement's findings | `03_findings/sample_XX.md` |
-| Write a long-form narrative report | [`04_writeups/WRITEUP-TEMPLATE.md`](./04_writeups/WRITEUP-TEMPLATE.md) |
+| Write a long-form narrative report | [`04_writeups/sample_NN.md`](./04_writeups/sample_01.md) (slots `sample_01`–`sample_50`) |
 | Understand how all engagement kinds work | [`ENGAGEMENTS.md`](./ENGAGEMENTS.md) |
 | See which ATT&CK techniques are covered | [`20_notes/MITRE-coverage.md`](./20_notes/MITRE-coverage.md) |
 | Learn what each tool signal means | [`20_notes/tooling-reference.md`](./20_notes/tooling-reference.md) |
@@ -119,7 +119,7 @@ labs/
 |
 |-- 04_writeups/                 <- Optional deep narrative reports (not validated per slot)
 |   |-- README.md                <- When to use vs 03_findings
-|   `-- WRITEUP-TEMPLATE.md      <- Full long-form writeup scaffold (copy + rename)
+|   `-- sample_01.md … sample_50.md  <- Long-form writeup scaffold (same ID as other phases)
 |
 |-- 10_extracted/                <- Non-executable artifacts (string dumps, NSIS scripts)
 |   `-- README.md
@@ -160,7 +160,7 @@ labs/
     `-- (each folder has SHOT_INDEX.txt with hygiene checklist)
 ```
 
-**Naming convention:** `sample_01` through `sample_99` (zero-padded) — the same ID runs across every phase folder for consistent cross-referencing. Optional long-form narratives may live under `04_writeups/` and are not part of the four-phase validator.
+**Naming convention:** `sample_01` through `sample_99` (zero-padded) — the same ID runs across every phase folder for consistent cross-referencing. Optional long-form scaffolds live under `04_writeups/` as `sample_01.md`–`sample_50.md` (not part of the four-phase validator).
 
 ---
 

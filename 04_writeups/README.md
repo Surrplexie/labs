@@ -13,7 +13,7 @@
 
 - You want a **portfolio-grade article** or **internal-style report** that would make `03_findings` too long.
 - You need structured sections (executive summary, detection opportunities, chain-of-custody narrative) without changing the machine-oriented `03_findings` frontmatter contract.
-- You are combining evidence from **multiple** slots into one story (then set `related_sample_id` accordingly in the writeup YAML).
+- You are combining evidence from **multiple** slots into one story — pick one file as the host document and set `related_sample_id` in its YAML to the primary slot; link other slots in the body.
 
 ---
 
@@ -21,8 +21,7 @@
 
 | Pattern | Use |
 |---------|-----|
-| `WRITEUP-TEMPLATE.md` | Canonical blank — copy to `WRITEUP_<topic_or_sample>.md` and fill. |
-| `WRITEUP_sample_XX.md` | Per-engagement long form tied to one slot (example name). |
+| `sample_01.md` … `sample_50.md` | Same convention as other phase folders: **one long-form scaffold per slot ID**. Edit `04_writeups/sample_NN.md` when you want a deep writeup for that engagement. |
 
 Files here are **not** part of the four-phase integrity check. Keep them free of host paths, credentials, and raw secrets; run `30_scripts/redact-check.ps1` before commit.
 
@@ -30,13 +29,13 @@ Files here are **not** part of the four-phase integrity check. Keep them free of
 
 ## Cross-links
 
-Point back to the phase files and evidence:
+Each `sample_NN.md` frontmatter `evidence_index` already points at the matching phase paths, for example for `sample_01`:
 
-- `../00_original/sample_XX.md` — acquisition
-- `../01_static/sample_XX.md` — static triage
-- `../02_dynamic/sample_XX.md` — dynamic triage
-- `../03_findings/sample_XX.md` — verdict + IOC slice + portfolio blurb
-- `../50_screenshots/sample_XX/` — screenshots + `SHOT_INDEX.txt`
-- `../40_iocs/indicators.csv` — consolidated IOC rows
+- [`../00_original/sample_01.md`](../00_original/sample_01.md) — acquisition
+- [`../01_static/sample_01.md`](../01_static/sample_01.md) — static triage
+- [`../02_dynamic/sample_01.md`](../02_dynamic/sample_01.md) — dynamic triage
+- [`../03_findings/sample_01.md`](../03_findings/sample_01.md) — verdict + IOC slice + portfolio blurb
+- [`../50_screenshots/sample_01/`](../50_screenshots/sample_01/) — screenshots + `SHOT_INDEX.txt`
+- [`../40_iocs/indicators.csv`](../40_iocs/indicators.csv) — consolidated IOC rows
 
-Start from **[`WRITEUP-TEMPLATE.md`](./WRITEUP-TEMPLATE.md)**.
+Open **[`sample_01.md`](./sample_01.md)** (or the `sample_NN.md` that matches your slot) and replace every `<FILL>` placeholder when you author the report.

@@ -1,7 +1,7 @@
 ---
 # Writeup document metadata (optional YAML -- not validated by 03_findings schema)
 writeup_version: 1
-related_sample_id: sample_XX
+related_sample_id: sample_27
 engagement_kind: file
 # ctf | lab | hunt -- adjust sections if not file-kind
 
@@ -29,19 +29,19 @@ keywords:
   - "<FILL>"
 
 evidence_index:
-  acquisition: ../00_original/sample_XX.md
-  static: ../01_static/sample_XX.md
-  dynamic: ../02_dynamic/sample_XX.md
-  findings: ../03_findings/sample_XX.md
-  screenshots: ../50_screenshots/sample_XX/
+  acquisition: ../00_original/sample_27.md
+  static: ../01_static/sample_27.md
+  dynamic: ../02_dynamic/sample_27.md
+  findings: ../03_findings/sample_27.md
+  screenshots: ../50_screenshots/sample_27/
   iocs_csv: ../40_iocs/indicators.csv
 ---
 
-<!-- COPY THIS FILE: rename to WRITEUP_<descriptive_name>.md then replace all <FILL> / sample_XX placeholders. -->
+<!-- Same slot ID as other phase folders: replace <FILL> throughout when you author the long-form report. -->
 
 # <FILL -- same as title>
 
-> **Related engagement:** [`sample_XX`](../03_findings/sample_XX.md) · **Kind:** `<FILL>` · **Classification:** `<FILL>`
+> **Related engagement:** [`sample_27`](../03_findings/sample_27.md) · **Kind:** `<FILL>` · **Classification:** `<FILL>`
 
 ---
 
@@ -176,7 +176,7 @@ evidence_index:
 
 ## 6. Static analysis (expanded)
 
-> For tool-by-tool notes, the phase log is canonical: [`01_static/sample_XX.md`](../01_static/sample_XX.md). Here, **synthesize** and add interpretation that did not fit the triage template.
+> For tool-by-tool notes, the phase log is canonical: [`01_static/sample_27.md`](../01_static/sample_27.md). Here, **synthesize** and add interpretation that did not fit the triage template.
 
 ### 6.1 Object identity and format
 
@@ -221,7 +221,7 @@ evidence_index:
 
 ## 7. Dynamic analysis (expanded)
 
-> Canonical run log: [`02_dynamic/sample_XX.md`](../02_dynamic/sample_XX.md)
+> Canonical run log: [`02_dynamic/sample_27.md`](../02_dynamic/sample_27.md)
 
 ### 7.1 Run card (reproducibility)
 
@@ -327,7 +327,7 @@ evidence_index:
 
 ## 11. MITRE ATT&CK mapping (narrative)
 
-> [`03_findings`](../03_findings/sample_XX.md) lists IDs; here, **justify** each mapping with technique → observation → confidence.
+> [`03_findings`](../03_findings/sample_27.md) lists IDs; here, **justify** each mapping with technique → observation → confidence.
 
 ### 11.1 Tactic overview
 
@@ -457,7 +457,7 @@ evidence_index:
 | `IMG_0001.png` | `<>` |
 | … | … |
 
-_(See also [`SHOT_INDEX.txt`](../50_screenshots/sample_XX/SHOT_INDEX.txt).)_
+_(See also [`SHOT_INDEX.txt`](../50_screenshots/sample_27/SHOT_INDEX.txt).)_
 
 ### Appendix E -- Glossary
 
