@@ -70,6 +70,21 @@ try {
 }
 
 # ---------------------------------------------------------------------------
+# Check tkinter (required by workflow_gui.py)
+# ---------------------------------------------------------------------------
+Write-Host "Checking tkinter..." -NoNewline
+& $Python -c "import tkinter" 2>&1 | Out-Null
+if ($LASTEXITCODE -ne 0) {
+    Write-Host " NOT FOUND" -ForegroundColor Red
+    Write-Host "workflow_gui.py needs tkinter. For this Python install:"
+    Write-Host "  python.org: re-run the installer -> Modify -> enable 'tcl/tk and IDLE'"
+    Write-Host "  Microsoft Store Python: use the python.org build or a distro that bundles tk"
+    Write-Error "tkinter not available for '$Python'."
+    exit 1
+}
+Write-Host " OK" -ForegroundColor Green
+
+# ---------------------------------------------------------------------------
 # Install pinned PyInstaller
 # ---------------------------------------------------------------------------
 if (-not $SkipPipInstall) {
@@ -135,7 +150,7 @@ if ($LASTEXITCODE -ne 0) {
 if (Test-Path $OutputExe) {
     $exeHash  = (Get-FileHash $OutputExe -Algorithm SHA256).Hash.ToUpper()
     $sizeMB   = [math]::Round((Get-Item $OutputExe).Length / 1MB, 1)
-    $buildTs  = Get-Date -Format 'yyyy-MM-ddTHH:mm:ssZ'
+    $buildTs  = [DateTime]::UtcNow.ToString('yyyy-MM-ddTHH:mm:ss') + 'Z'
     $pyVerStr = (& $Python --version 2>&1).ToString().Trim()
 
     $sumsContent = @"

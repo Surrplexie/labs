@@ -112,8 +112,9 @@ Optional explicit repo when launching the built binary:
 .\dist\workflow_gui.exe --repo "C:\path\to\labs"
 ```
 
-**Disclaimer reminder:** `build_exe.ps1` uses `pip` to install or upgrade PyInstaller.
-That touches your machine's Python environment. The resulting `workflow_gui.exe` is a
+**Disclaimer reminder:** `build_exe.ps1` uses `pip` to install the **pinned** PyInstaller
+version from `build_requirements.txt` (not an open-ended upgrade). That touches your
+machine's Python environment. The resulting `workflow_gui.exe` is a
 large standalone file; treat it like any other executable you did not compile yourself
 unless you built it locally. If you ever download a pre-built `workflow_gui` from
 Releases, **compare hashes** to published values before running.
@@ -244,7 +245,8 @@ Custom Python:
 bash ./30_scripts/build_linux.sh --python python3.12
 ```
 
-**Disclaimer reminder:** The build script runs `pip install --upgrade pyinstaller`. That
+**Disclaimer reminder:** `build_linux.sh` installs the **pinned** PyInstaller version from
+`build_requirements.txt` via `pip` (not `pip install --upgrade pyinstaller`). That
 modifies your user or system Python environment according to how pip is configured.
 
 ---

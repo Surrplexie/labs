@@ -107,7 +107,7 @@ jobs:
           | Release tag | $tag |
           | Built on | $ts |
           | Python | $pyver |
-          | $pin | |
+          | PyInstaller | $pin |
           | SHA-256 (workflow_gui.exe) | ``$hash`` |
 
           ### Verify before running
