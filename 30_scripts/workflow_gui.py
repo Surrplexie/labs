@@ -194,6 +194,19 @@ def get_kind_for_slot(root: Path, sid: str) -> str:
             return row.get("engagement_kind", "file").strip() or "file"
     return "file"
 
+
+def expected_engagement_kind_for_slot(n: int) -> str | None:
+    """Tier-1 slot bands (convention, not enforced). None for slots 51-99."""
+    if 1 <= n <= 30:
+        return "file"
+    if 31 <= n <= 40:
+        return "ctf"
+    if 41 <= n <= 45:
+        return "lab"
+    if 46 <= n <= 50:
+        return "hunt"
+    return None
+
 def read_frontmatter(findings_path: Path) -> dict:
     out = {}
     if not findings_path.exists():
@@ -502,6 +515,7 @@ class WorkflowApp(tk.Tk):
         ttk.Entry(nf, textvariable=self._ns["num"], width=6).pack(side="left")
         ttk.Button(nf, text="Auto-detect",
                    command=self._auto_detect_num).pack(side="left", padx=(8, 0))
+        self._ns["num"].trace_add("write", self._on_slot_num_change)
         R += 1
 
         _lbl(frame, "Engagement kind", R)
@@ -737,6 +751,16 @@ class WorkflowApp(tk.Tk):
         self._ns["mitre"]       = tk.StringVar()
         self._ns["_mitre_entry"] = _entry(frame, self._ns["mitre"], R)
         _hint(frame, "comma-separated: T1036, T1027, T1547.001", R)
+        R += 1
+
+        # ---- Optional long writeup ----
+        self._ns["with_long_writeup"] = tk.BooleanVar(value=False)
+        ttk.Checkbutton(
+            frame,
+            text="Scaffold 04_writeups long-form template (-WithLongWriteup)",
+            variable=self._ns["with_long_writeup"],
+        ).grid(row=R, column=1, columnspan=2, sticky="w", padx=(0, 12), pady=(6, 0))
+        _hint(frame, "Replaces file-shaped 04 with kind template (ctf/lab/hunt/file)", R)
         R += 1
 
         # ---- Action ----
@@ -1263,7 +1287,27 @@ class WorkflowApp(tk.Tk):
             return
         n = next_sample_number(self.repo_root)
         self._ns["num"].set(str(n))
-        self._log(f"Next open reserve slot: sample_{pad2(n)}")
+        sid = f"sample_{pad2(n)}"
+        kind = get_kind_for_slot(self.repo_root, sid)
+        if kind in ENGAGEMENT_KINDS:
+            self._ns["kind"].set(kind)
+        self._log(f"Next open reserve slot: {sid} (tracker kind={kind})")
+
+    def _on_slot_num_change(self, *_):
+        """Sync engagement kind from tracker / slot band when slot # changes."""
+        num_str = self._ns["num"].get().strip()
+        if not num_str.isdigit():
+            return
+        n = int(num_str)
+        if self.repo_root:
+            sid = f"sample_{pad2(n)}"
+            kind = get_kind_for_slot(self.repo_root, sid)
+            if kind in ENGAGEMENT_KINDS:
+                self._ns["kind"].set(kind)
+                return
+        expected = expected_engagement_kind_for_slot(n)
+        if expected and expected in ENGAGEMENT_KINDS:
+            self._ns["kind"].set(expected)
 
     # -----------------------------------------------------------------------
     # New Engagement -- create
@@ -1281,6 +1325,18 @@ class WorkflowApp(tk.Tk):
         n    = int(num_str)
         sid  = f"sample_{pad2(n)}"
         kind = self._ns.get("kind", tk.StringVar()).get() or "file"
+
+        expected = expected_engagement_kind_for_slot(n)
+        if expected and kind != expected:
+            proceed = messagebox.askyesno(
+                "Slot band mismatch",
+                f"{sid} is in the {expected} band (01-30=file, 31-40=ctf, "
+                f"41-45=lab, 46-50=hunt) but kind is '{kind}'.\n\n"
+                "Create anyway?",
+                icon="warning",
+            )
+            if not proceed:
+                return
 
         eng_script = self.repo_root / "30_scripts" / "new_engagement.ps1"
         if not eng_script.exists():
@@ -1303,6 +1359,8 @@ class WorkflowApp(tk.Tk):
         if kind == "file": args += ["-Type", stype]
         if title:          args += ["-Title", title]
         if platform:       args += ["-Platform", platform]
+        if self._ns.get("with_long_writeup", tk.BooleanVar()).get():
+            args += ["-WithLongWriteup"]
 
         self._log(f"Scaffolding {sid} (kind={kind})...")
         try:
@@ -1327,9 +1385,12 @@ class WorkflowApp(tk.Tk):
         except Exception as exc:
             self._log(f"Warning: frontmatter patch failed: {exc}")
 
+        long_msg = ""
+        if self._ns.get("with_long_writeup", tk.BooleanVar()).get():
+            long_msg = "\n04_writeups long-form template scaffolded.\n"
         messagebox.showinfo("Created",
             f"{sid} scaffolded ({kind}).\n\n"
-            f"Frontmatter patched with entered values.\n"
+            f"Frontmatter patched with entered values.{long_msg}"
             f"Open phase files to fill remaining PENDING fields.")
         self._log(f"Created {sid} (kind={kind}).")
         self._refresh_sample_list()

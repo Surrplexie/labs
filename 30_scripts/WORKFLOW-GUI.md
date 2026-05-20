@@ -193,6 +193,15 @@ Click **CREATE ENGAGEMENT** (button label reflects selected kind). The GUI calls
 - `50_screenshots/sample_XX/SHOT_INDEX.txt` (if missing)
 - Updates `samples_tracker.csv` with kind, title, and `date_started`
 
+Optional: enable **Scaffold 04_writeups long-form template** before creating. That
+passes `-WithLongWriteup` (same as CLI) and writes `04_writeups/sample_XX.md` from
+`_templates/{kind}.md` — use for CTF/lab/hunt slots so you do not keep the pre-seeded
+file-malware outline.
+
+**Slot band hints:** entering a slot number (or **Auto-detect**) sets **Engagement kind**
+from `samples_tracker.csv` (01–30 file, 31–40 ctf, 41–45 lab, 46–50 hunt). If kind
+does not match the band, the GUI warns before scaffolding (you can continue anyway).
+
 Then replace remaining `PENDING` placeholders in the Markdown as you perform real work.
 
 **Disclaimer reminder:** The GUI writes files **you** asked it to write. Review diffs

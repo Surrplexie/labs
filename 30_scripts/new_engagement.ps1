@@ -91,6 +91,22 @@ if (-not (Test-Path (Join-Path $root '00_original'))) {
 $id   = 'sample_{0:D2}' -f $NextNumber
 $date = Get-Date -Format 'yyyy-MM-dd'
 
+function Get-ExpectedEngagementKindForSlot {
+    param([int]$Number)
+    if ($Number -ge 1 -and $Number -le 30)  { return 'file' }
+    if ($Number -ge 31 -and $Number -le 40) { return 'ctf' }
+    if ($Number -ge 41 -and $Number -le 45) { return 'lab' }
+    if ($Number -ge 46 -and $Number -le 50) { return 'hunt' }
+    return $null
+}
+
+$expectedKind = Get-ExpectedEngagementKindForSlot -Number $NextNumber
+if ($expectedKind -and $Kind -ne $expectedKind) {
+    Write-Warning @"
+Slot convention: $id is in the $expectedKind band (01-30=file, 31-40=ctf, 41-45=lab, 46-50=hunt) but -Kind is '$Kind'. Continuing anyway.
+"@
+}
+
 # ---------------------------------------------------------------------------
 # Guard: slot already in use
 # ---------------------------------------------------------------------------

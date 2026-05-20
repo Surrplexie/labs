@@ -1139,6 +1139,17 @@ powershell -ExecutionPolicy Bypass -File .\30_scripts\new_engagement.ps1 `
 
 Opens four files in `00_original/`, `01_static/`, `02_dynamic/`, `03_findings/` and a screenshots folder.
 
+**Optional long-form (`04_writeups`):** Pre-seeded `04_writeups/sample_31`–`sample_40` files use the **file** malware outline. On first use of a CTF slot, scaffold the correct template:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\30_scripts\scaffold_writeup.ps1 `
+    -SampleId sample_37 -Kind ctf -Platform "HackTheBox" -Title "Lame" -Overwrite
+
+# Or at scaffold time:
+powershell -ExecutionPolicy Bypass -File .\30_scripts\new_engagement.ps1 `
+    -NextNumber 37 -Kind ctf -Platform "HackTheBox" -Title "Lame" -WithLongWriteup
+```
+
 ## Step 2: Fill the challenge brief (00_original)
 
 Open `00_original/sample_07.md` and fill:
@@ -1223,6 +1234,8 @@ powershell -ExecutionPolicy Bypass -File .\30_scripts\new_engagement.ps1 `
     -NextNumber 8 -Kind lab -Platform "TryHackMe" -Title "Introductory Researching"
 ```
 
+**Optional long-form (`04_writeups`):** Pre-seeded `04_writeups/sample_41`–`sample_45` use the **file** outline. On first use, run `scaffold_writeup.ps1 -Kind lab -Overwrite` or add `-WithLongWriteup` to `new_engagement.ps1` (slots **41–45** are the lab band in `samples_tracker.csv`).
+
 ## Step 2: Fill the lab brief (00_original)
 
 Open `00_original/sample_08.md` and fill:
@@ -1292,6 +1305,8 @@ Commit.
 powershell -ExecutionPolicy Bypass -File .\30_scripts\new_engagement.ps1 `
     -NextNumber 9 -Kind hunt -Title "Lateral movement via scheduled tasks"
 ```
+
+**Optional long-form (`04_writeups`):** Pre-seeded `04_writeups/sample_46`–`sample_50` use the **file** outline. On first use, run `scaffold_writeup.ps1 -Kind hunt -Overwrite` or add `-WithLongWriteup` to `new_engagement.ps1` (slots **46–50** are the hunt band in `samples_tracker.csv`).
 
 ## Step 2: Define the scope (00_original)
 
