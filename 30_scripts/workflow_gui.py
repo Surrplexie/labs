@@ -2,9 +2,8 @@
 """
 workflow_gui.py  --  Cross-platform labs engagement assistant.
 
-Paste values once; every phase-file section is filled automatically.
-Supports all engagement kinds: file, CTF, lab, hunt.
-New in v3: kind-specific forms, screenshot manager with auto-sort.
+Malware triage (file) is the primary use case; CTF, lab, and hunt share the same forms.
+Paste values once; phase files are filled automatically (v3.1+: kind-specific UI, Tools tab).
 
 Usage:
     python workflow_gui.py

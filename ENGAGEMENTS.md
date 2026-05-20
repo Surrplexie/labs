@@ -2,10 +2,18 @@
 
 **Master guide for all engagement types in this logbook.**
 
-This repository supports four engagement kinds. Every engagement uses the same
-slot system (`sample_XX` IDs, the same four phase folders, the same tracker,
-the same validation and export pipeline). The `engagement_kind` field in the
-tracker and frontmatter controls which templates, checklists, and checks apply.
+This repository is **malware-triage primary** (`file` kind). CTF, training labs, and threat hunts use the **same** slot system (`sample_XX`), four phase folders, tracker, `validate.ps1`, and `export-summary.ps1` — they are **secondary tracks**, not a forked repo or second workflow.
+
+The `engagement_kind` field in the tracker and frontmatter selects templates, status lifecycles, GUI panels, and which validate checks apply.
+
+### Portfolio / INDEX presentation
+
+After `export-summary.ps1`, [`INDEX.md`](./INDEX.md) is grouped by kind so reviewers see:
+
+1. **File analyses** — malware triage (primary portfolio signal)
+2. **CTF write-ups**, **Labs**, **Threat hunts** — clearly separated tables and cross-references
+
+Finished work for any kind lives in **`03_findings/sample_XX.md`**. Optional narrative depth: **`04_writeups/sample_XX.md`** (kind-specific templates via `scaffold_writeup.ps1`).
 
 ---
 

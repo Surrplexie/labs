@@ -1,6 +1,7 @@
 # 30_scripts
 
-PowerShell lifecycle and hygiene scripts for the labs malware triage logbook.
+PowerShell lifecycle and hygiene scripts for the **labs** logbook (**malware `file` triage primary**; same scripts serve `ctf`, `lab`, and `hunt` via `-Kind` and `engagement_kind`).
+
 All scripts require PowerShell 5.1+ and run from anywhere (they resolve the repo root automatically).
 
 **Workflow GUI (cross-platform):** [`workflow_gui.py`](./workflow_gui.py) -- paste-once autofill for all phase Markdown files. **Usage, Windows/Linux steps, and disclaimers:** [`WORKFLOW-GUI.md`](./WORKFLOW-GUI.md).
@@ -292,9 +293,10 @@ powershell -ExecutionPolicy Bypass -File .\30_scripts\close_sample.ps1 -SampleId
 
 ## validate.ps1
 
-Runs 13+ structural checks against the repo and `samples_tracker.csv`. Kind-aware:
-some checks (SHA256, IOC cross-reference) apply only to `file` kind engagements.
-Exits 0 if all checks pass (WARNs allowed) or 1 if any FAIL.
+Runs **18** structural checks against the repo and `samples_tracker.csv`. Kind-aware:
+SHA256/IOC checks apply to `file` (and hunt IOCs where relevant); CTF/lab/hunt depth,
+skills, and hunt `query_refs` apply to their kinds. Exits 0 if all checks pass (WARNs
+allowed) or 1 if any FAIL. See the script header for the authoritative checklist.
 
 ```powershell
 # Standard run
@@ -304,20 +306,14 @@ powershell -ExecutionPolicy Bypass -File .\30_scripts\validate.ps1
 powershell -ExecutionPolicy Bypass -File .\30_scripts\validate.ps1 -FailOnWarn
 ```
 
-**Checks:**
-1. `samples_tracker.csv` schema (required columns including `engagement_kind`)
-2. All four phase `.md` files exist for non-empty slots
-3. SHA256 populated for `file` kind non-empty slots (WARN for other kinds)
-4. Phase files have substantive content (>15 lines)
-5. `03_findings/sample_XX.md` has YAML frontmatter
-6. SHA256 in tracker matches SHA256 in frontmatter (`file` kind only)
-7. `40_iocs/indicators.csv` schema and sample_id cross-reference (`file` kind only)
-8. Orphan phase `.md` files with no tracker row
-9. Forbidden extension scan (`.exe`, `.dll`, `.pcap`, `.iso`, etc.)
-10. `50_screenshots/sample_XX/` folder exists for non-empty slots
-11. `schema_version` field present in all active findings files (accepts 1 or 2)
-12. Secret / flag pattern scan (warns on raw CTF flags or credential-like patterns in .md files)
-13. `engagement_kind` field present and non-blank for all active tracker rows
+**Checks (summary — see `validate.ps1` header for full list):**
+
+1. Tracker CSV schema · 2. Phase files per slot · 3. SHA256 (`file`) · 4. Content depth
+5. Findings frontmatter · 6. SHA256 cross-check (`file`) · 7. IOC CSV schema
+8. Orphan files · 9. Forbidden extensions · 10. Screenshot folders
+11. `schema_version` · 12. Secret/flag scan · 13. `engagement_kind` presence
+14. CTF solve depth · 15. Skills on closed non-file engagements
+16. Hunt `query_refs` → `45_hunt_queries/` · 17. Lab completion depth · 18. Hunt collection depth
 
 ---
 

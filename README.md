@@ -1,10 +1,28 @@
 # labs
 
-> **Personal malware triage logbook — public for professional seekers and learners.**
+> **Malware triage logbook (primary)** — public for professional seekers and learners.
+> The same slot pipeline also documents **CTF**, **training labs**, and **threat hunts**;
+> they are secondary tracks in one repo, not a separate project.
+>
 > No releases, versioned packages, or scheduled updates are guaranteed or will ever be provided.
 > **One exception:** the [`workflow_gui`](./30_scripts/workflow_gui.py) compiled binary
 > (`.exe` / Linux) may be released via GitHub Releases as the sole distributable artifact
 > from this repository. It contains no samples, no credentials, and no analysis data.
+
+---
+
+## Repository identity
+
+| | |
+|---|---|
+| **Primary focus** | `file` — static and dynamic malware triage, IOCs in [`40_iocs/`](./40_iocs/indicators.csv), MITRE in [`20_notes/MITRE-coverage.md`](./20_notes/MITRE-coverage.md) |
+| **Secondary tracks** | `ctf`, `lab`, `hunt` — same `sample_XX` slots, same `00`→`03` folders, kind-specific templates and statuses |
+| **Finished artifact per slot** | [`03_findings/sample_XX.md`](./03_findings/sample_01.md) (feeds [`INDEX.md`](./INDEX.md)); optional long-form [`04_writeups/`](./04_writeups/README.md) |
+| **Not a second logbook** | One tracker, one validator, one export — [`export-summary.ps1`](./30_scripts/export-summary.ps1) groups [`INDEX.md`](./INDEX.md) by kind |
+
+**How reviewers should read it:** open [`INDEX.md`](./INDEX.md) → **File analyses** first for malware portfolio depth → **CTF write-ups**, **Labs**, and **Threat hunts** as separate labelled sections. Do not expect every slot to be a MalwareBazaar sample.
+
+**Slot convention (recommended):** `sample_01`–`30` file · `31`–`40` ctf · `41`–`45` lab · `46`–`50` hunt — see [`ENGAGEMENTS.md`](./ENGAGEMENTS.md#slot-reservation--tier-1-conventions).
 
 ---
 
@@ -27,11 +45,13 @@ This repository is maintained solely for **personal use** and is made public as 
 
 ## Purpose
 
-This is a **personal skills and professional reference** logbook. **Primary focus:** static and dynamic malware triage. The same slot pipeline also supports CTF, training labs, and threat hunts (see [Engagement Kinds](#engagement-kinds)). Structured to support:
+This is a **personal skills and professional reference** logbook centered on **malware analysis workflow discipline**. CTF, course labs, and threat hunts reuse the same structure so practice in those areas still shows up in one portfolio index — without diluting the malware-first identity of the repo.
 
-- Portfolio review by professional contacts, recruiters, and peers
-- Personal knowledge retention and skill development across the malware analysis discipline
-- A consistent, version-controlled record of analytical work over time
+Structured to support:
+
+- Portfolio review (malware depth first; other kinds clearly labelled in [`INDEX.md`](./INDEX.md))
+- Personal knowledge retention across static/dynamic triage, detection, and offensive practice
+- A consistent, version-controlled record over time
 
 It is **not** intended for production deployment, operational use, or redistribution as a training dataset.
 
@@ -39,18 +59,19 @@ It is **not** intended for production deployment, operational use, or redistribu
 
 ## Who This Is For
 
-| Audience | How to use this repo |
+| Audience | Start here |
 |---|---|
-| **Recruiters / hiring managers** | See [`INDEX.md`](./INDEX.md) for the at-a-glance sample table; read `03_findings/sample_XX.md` public-safe blurbs for portfolio entries |
-| **Security learners** | Use the workflow structure below as a triage template; reference `20_notes/tooling-reference.md` for tool guidance |
-| **Researchers** | Reference `40_iocs/indicators.csv` and cross-reference with public threat intel; see `20_notes/case-series/` for pattern analysis |
-| **General public** | Read-only logbook content; optional signed `workflow_gui` binary on GitHub Releases only (verify hashes per `RELEASE-VERIFICATION.md`) |
+| **Recruiters / hiring managers** | [`INDEX.md`](./INDEX.md) → **File analyses** table and `03_findings` public-safe blurbs; optional [`04_writeups/`](./04_writeups/README.md) for deep malware reports. CTF/lab/hunt appear in their own INDEX sections — same repo, different lifecycle. |
+| **Security learners (malware)** | [Track A in `WORKFLOW.md`](./WORKFLOW.md#track-a-file-analysis), [`20_notes/tooling-reference.md`](./20_notes/tooling-reference.md) |
+| **Security learners (CTF / lab / hunt)** | [`ENGAGEMENTS.md`](./ENGAGEMENTS.md), tracks B/C/D in [`WORKFLOW.md`](./WORKFLOW.md), [`20_notes/README.md`](./20_notes/README.md) |
+| **Researchers** | [`40_iocs/indicators.csv`](./40_iocs/indicators.csv) (`file` + confirmed `hunt` IOCs only), [`20_notes/case-series/`](./20_notes/case-series/) for malware patterns |
+| **General public** | Read-only Markdown/CSV content; optional `workflow_gui` binary on Releases only — [`RELEASE-VERIFICATION.md`](./RELEASE-VERIFICATION.md) |
 
 ---
 
 ## Engagement Kinds
 
-This logbook is not file-analysis-only. Every engagement uses the same slot system and pipeline.
+One logbook, four kinds. **Malware `file` work is the default mental model**; other kinds reuse folder names with different meaning (see [`ENGAGEMENTS.md`](./ENGAGEMENTS.md#phase-folder-mapping-by-kind)).
 
 | Kind | What it is | Typical output |
 |------|-----------|----------------|
@@ -248,7 +269,7 @@ Current versions: **`schema_version: 1`** (legacy file engagements) or **`schema
 | `ingest-procmon.ps1` | Parse Procmon CSV from VM — write Markdown tables and IOC candidates into `02_dynamic` |
 | `ingest-events.ps1` | Parse SIEM/Sysmon event export — timeline and IOC candidates for hunt engagements |
 | `close_sample.ps1` | Advance a slot's lifecycle status and print a phase-specific close checklist |
-| `validate.ps1` | Run 15 kind-aware structural checks; exits 1 if any FAIL |
+| `validate.ps1` | Run 18 kind-aware structural checks; exits 1 if any FAIL |
 | `tag_release.ps1` | Preflight validate/redact, then create annotated `vX.Y.Z` tag for GitHub Release |
 | `export-summary.ps1` | Parse YAML frontmatter, regenerate `INDEX.md` and `dist/summary.json` |
 | `redact-check.ps1` | Scan all `.md`/`.csv`/`.txt` files for non-VM paths, emails, internal hostnames |
@@ -325,7 +346,7 @@ Build artifacts land in `dist/` which is excluded from the repo by `.gitignore`.
 | **New Engagement** | Kind-specific form (`file`, `ctf`, `lab`, `hunt`) — scaffold all phase `.md` files + `SHOT_INDEX.txt` via `new_engagement.ps1` |
 | **Update Sample** | Select a slot, change lifecycle status and frontmatter (verdict/skills/platform/etc.), write back to tracker and findings |
 | **Screenshots** | Manage `50_screenshots/sample_XX/` (optional Pillow thumbnails) |
-| **Tools** | Run `validate.ps1`, `export-summary.ps1`, `redact-check.ps1`, `strip-exif.ps1`, Procmon/SIEM ingest with live output |
+| **Tools** | Common scripts for all kinds; **file** = Procmon ingest; **hunt** = event ingest + hunt query scaffold (see [`WORKFLOW-GUI.md`](./30_scripts/WORKFLOW-GUI.md)) |
 | **Settings** | Repo root path and default analyst name; saved to a local config file |
 
 The GUI requires no external Python packages — only the standard library `tkinter`

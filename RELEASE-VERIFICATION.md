@@ -128,8 +128,8 @@ unexpected packages in the SBOM should be treated as noteworthy.
 
 - **Use at your own risk.** No warranty, express or implied, is provided.
 - **Not official software.** This is a personal tooling script for a personal
-  malware triage lab. It is not affiliated with any organisation, vendor, or
-  product.
+  security logbook (malware triage primary; also supports CTF/lab/hunt documentation).
+  It is not affiliated with any organisation, vendor, or product.
 - **No malware.** The binary contains only the automation helper. It does not
   include, bundle, or provide access to any malware samples, CVE exploits, or
   any other harmful content.

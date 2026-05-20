@@ -2,9 +2,9 @@
 
 **Step-by-step workflows for every engagement kind in this logbook.**
 
-This repository supports four engagement tracks. Pick the one that matches your work,
-follow it from top to bottom, and commit at the end. All tracks share the same slot
-system, tracker, validation, and export pipeline.
+**Identity:** [Track A (file)](#track-a-file-analysis) is the **primary** malware triage path (MalwareBazaar-style samples, VM static/dynamic, IOCs). Tracks B–D (CTF, lab, hunt) reuse the same folders and scripts with different phase meaning — see [`ENGAGEMENTS.md`](./ENGAGEMENTS.md).
+
+Pick the track that matches your work, follow it top to bottom, and commit at the end. All tracks share the same slot system, tracker, validation, and export pipeline.
 
 | Track | When to use |
 |-------|------------|
