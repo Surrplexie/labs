@@ -27,7 +27,7 @@ This repository is maintained solely for **personal use** and is made public as 
 
 ## Purpose
 
-This is a **personal skills and professional reference** logbook documenting static and dynamic malware triage workflows, threat intelligence indicators, and security research tooling notes. Structured to support:
+This is a **personal skills and professional reference** logbook. **Primary focus:** static and dynamic malware triage. The same slot pipeline also supports CTF, training labs, and threat hunts (see [Engagement Kinds](#engagement-kinds)). Structured to support:
 
 - Portfolio review by professional contacts, recruiters, and peers
 - Personal knowledge retention and skill development across the malware analysis discipline
@@ -44,7 +44,7 @@ It is **not** intended for production deployment, operational use, or redistribu
 | **Recruiters / hiring managers** | See [`INDEX.md`](./INDEX.md) for the at-a-glance sample table; read `03_findings/sample_XX.md` public-safe blurbs for portfolio entries |
 | **Security learners** | Use the workflow structure below as a triage template; reference `20_notes/tooling-reference.md` for tool guidance |
 | **Researchers** | Reference `40_iocs/indicators.csv` and cross-reference with public threat intel; see `20_notes/case-series/` for pattern analysis |
-| **General public** | Read-only; nothing here is executable or deployable |
+| **General public** | Read-only logbook content; optional signed `workflow_gui` binary on GitHub Releases only (verify hashes per `RELEASE-VERIFICATION.md`) |
 
 ---
 
@@ -82,6 +82,7 @@ See [`ENGAGEMENTS.md`](./ENGAGEMENTS.md) for the complete kind reference and [`W
 | Use the GUI to fill engagement files | [`30_scripts/workflow_gui.py`](./30_scripts/workflow_gui.py) |
 | Step-by-step GUI usage and disclaimers | [`30_scripts/WORKFLOW-GUI.md`](./30_scripts/WORKFLOW-GUI.md) |
 | Verify a downloaded release binary | [`RELEASE-VERIFICATION.md`](./RELEASE-VERIFICATION.md) |
+| Publish a new `workflow_gui` release (tag `vX.Y.Z`) | [`RELEASE-TAGGING.md`](./RELEASE-TAGGING.md) |
 | Understand the full workflow (summary) | [Complete Workflow Guide](#complete-workflow-guide) below |
 
 ---
@@ -96,6 +97,7 @@ labs/
 |-- WORKFLOW.md                  <- Full step-by-step guide (Tracks A/B/C/D)
 |-- ENGAGEMENTS.md              <- Engagement kinds reference (file/ctf/lab/hunt)
 |-- RELEASE-VERIFICATION.md     <- Binary checksum verification and release policy
+|-- RELEASE-TAGGING.md          <- When/how to tag vX.Y.Z for workflow_gui releases
 |-- LICENSE                      <- MIT License
 |-- .gitignore                   <- Blocks executables, archives, secrets, OS noise
 |-- samples_tracker.csv          <- One row per slot: sha256, url, name, status
@@ -134,17 +136,20 @@ labs/
 |
 |-- 30_scripts/                  <- PowerShell lifecycle and hygiene automation
 |   |-- README.md                <- Script documentation and usage examples
-|   |-- new_sample.ps1           <- Scaffold a new sample slot (PE/Office/Script/Archive)
+|   |-- new_engagement.ps1       <- Scaffold slot (file / ctf / lab / hunt)
+|   |-- new_sample.ps1           <- Alias for new_engagement.ps1 -Kind file
 |   |-- close_sample.ps1         <- Advance status, print close checklist
-|   |-- validate.ps1             <- 11-point structural integrity check
+|   |-- validate.ps1             <- Structural integrity (15 checks, kind-aware)
 |   |-- export-summary.ps1       <- Regenerate INDEX.md + dist/summary.json
 |   |-- redact-check.ps1         <- Scan for PII / non-VM paths before committing
 |   |-- strip-exif.ps1           <- Strip EXIF metadata from screenshots
 |   |-- ingest-procmon.ps1       <- Parse Procmon CSV -> Markdown tables + IOC candidates
-|   |-- workflow_gui.py          <- Cross-platform GUI placeholder autofill helper
+|   |-- ingest-events.ps1        <- Parse SIEM/Sysmon CSV -> hunt timeline in 02_dynamic
+|   |-- workflow_gui.py          <- Cross-platform GUI (all engagement kinds)
 |   |-- build_exe.ps1            <- Build workflow_gui.exe (pinned PyInstaller + SHA256SUMS)
 |   |-- build_linux.sh           <- Build workflow_gui Linux binary (pinned + SHA256SUMS)
-|   |-- build_requirements.txt   <- Pinned build deps (pyinstaller==6.20.0)
+|   |-- build_requirements.txt   <- Single source of truth for PyInstaller pin
+|   |-- tag_release.ps1          <- Preflight + annotated vX.Y.Z tag for GitHub Release
 |   |-- install-hooks.ps1        <- Install pre-push Git hook (Windows)
 |   |-- install-hooks.sh         <- Install pre-push Git hook (Linux)
 |   |-- WORKFLOW-GUI.md          <- GUI usage guide and disclaimers
@@ -192,9 +197,8 @@ See [`30_scripts/README.md`](./30_scripts/README.md) for full documentation and 
 
 Every push and pull request runs `.github/workflows/integrity.yml` on GitHub Actions, which executes three checks automatically:
 
-1. **`validate.ps1`** — 11 structural checks (CSV schema, phase files, SHA256, frontmatter, orphans, forbidden extensions, schema version, and more)
-2. **`redact-check.ps1`** — scans for non-VM paths, email addresses, and internal hostnames that should not be public
-3. **Schema version inline check** — confirms every active findings file carries `schema_version: 1`
+1. **`validate.ps1`** — 15 structural checks (kind-aware: tracker, phase files, IOCs, orphans, forbidden extensions, schema version, CTF/lab flags, skills, and more)
+2. **`redact-check.ps1`** — scans for non-VM paths, email addresses, internal hostnames, and raw CTF flag patterns
 
 The job fails and blocks merge on any FAIL-level finding.
 
@@ -221,41 +225,36 @@ All `03_findings/sample_XX.md` YAML frontmatter and the `dist/summary.json` expo
 | [`30_scripts/schema/summary.schema.json`](./30_scripts/schema/summary.schema.json) | Versioned envelope and record structure for `dist/summary.json` |
 | [`30_scripts/schema/CHANGELOG.md`](./30_scripts/schema/CHANGELOG.md) | History of breaking/non-breaking changes and migration guide |
 
-Current version: **schema_version: 1**. Every active findings file must include this field. `validate.ps1` check 11 enforces it. `export-summary.ps1` writes a `schema_version: 1` envelope into `dist/summary.json`.
+Current versions: **`schema_version: 1`** (legacy file engagements) or **`schema_version: 2`** (all kinds; required for `ctf`, `lab`, `hunt`). Every active findings file must include `schema_version`. `validate.ps1` check 11 enforces it. `export-summary.ps1` writes a versioned envelope into `dist/summary.json` with per-kind counts.
 
 ### Script overview
 
 | Script | One-line purpose |
 |--------|-----------------|
-| `workflow_gui.py` | Cross-platform GUI — paste all sample values once, every template section is auto-filled (includes Type selector) |
+| `workflow_gui.py` | Cross-platform GUI — scaffold/update engagements (file, ctf, lab, hunt); optional screenshot manager |
 | `new_engagement.ps1` | Create any engagement slot — file / ctf / lab / hunt with kind-specific templates |
 | `new_sample.ps1` | Backwards-compat alias for `new_engagement.ps1 -Kind file` |
 | `ingest-procmon.ps1` | Parse Procmon CSV from VM — write Markdown tables and IOC candidates into `02_dynamic` |
+| `ingest-events.ps1` | Parse SIEM/Sysmon event export — timeline and IOC candidates for hunt engagements |
 | `close_sample.ps1` | Advance a slot's lifecycle status and print a phase-specific close checklist |
-| `validate.ps1` | Run 11 structural integrity checks; exits 1 if any FAIL |
+| `validate.ps1` | Run 15 kind-aware structural checks; exits 1 if any FAIL |
+| `tag_release.ps1` | Preflight validate/redact, then create annotated `vX.Y.Z` tag for GitHub Release |
 | `export-summary.ps1` | Parse YAML frontmatter, regenerate `INDEX.md` and `dist/summary.json` |
 | `redact-check.ps1` | Scan all `.md`/`.csv`/`.txt` files for non-VM paths, emails, internal hostnames |
 | `strip-exif.ps1` | Strip EXIF metadata from all images in `50_screenshots/` |
 | `build_exe.ps1` | Compile `workflow_gui.py` to `.exe` with pinned PyInstaller; outputs `SHA256SUMS.txt` |
 | `build_linux.sh` | Compile `workflow_gui.py` to Linux binary with pinned PyInstaller; outputs `SHA256SUMS.txt` |
-| `build_requirements.txt` | Pinned build-time dependency list (`pyinstaller==6.20.0`) |
+| `build_requirements.txt` | Pinned PyInstaller version (read by build scripts and CI; sole pin to edit) |
 | `install-hooks.ps1` | Install the pre-push Git hook on Windows |
 | `install-hooks.sh` | Install the pre-push Git hook on Linux |
 
 ### What validate.ps1 checks
 
-Running `validate.ps1` before every commit gives you confidence that:
-
-1. `samples_tracker.csv` has all required columns
-2. All four phase `.md` files exist for every non-empty slot
-3. Every non-empty slot has a SHA256 on record
-4. Phase files have substantive content (not just headings)
-5. `03_findings/` files have YAML frontmatter
-6. SHA256 in tracker matches SHA256 in frontmatter
-7. `40_iocs/indicators.csv` schema is valid and all sample IDs are known
-8. No orphan `.md` files exist without a tracker row
-9. No forbidden file extensions exist anywhere in the working tree
-10. A `50_screenshots/sample_XX/` folder exists for every non-empty slot
+Running `validate.ps1` before every commit runs **15 checks**, including: tracker schema,
+`engagement_kind`, per-slot phase files (kind-aware depth), findings frontmatter and
+`schema_version`, IOC CSV schema, orphans, forbidden extensions in the working tree,
+screenshot folders, raw flag/credential patterns, and CTF/lab closure depth. See
+[`30_scripts/validate.ps1`](./30_scripts/validate.ps1) header for the full list.
 
 ---
 
@@ -312,10 +311,11 @@ Build artifacts land in `dist/` which is excluded from the repo by `.gitignore`.
 
 | Tab | What you can do |
 |-----|----------------|
-| **New Sample** | Fill one form — SHA256, hashes, filename, MIME, dates, verdict, confidence, tags, MITRE IDs, YARA rows — and click Create to write all 4 phase `.md` files + `SHOT_INDEX.txt` in one action |
-| **Update Sample** | Select an existing sample, change its lifecycle status and frontmatter values (verdict, confidence, tags, MITRE), write back to tracker and findings file |
-| **Tools** | One-click buttons to run `validate.ps1`, `export-summary.ps1`, `redact-check.ps1`, and `strip-exif.ps1` with live output |
-| **Settings** | Set the repo root path and default analyst name; saved to a local config file |
+| **New Engagement** | Kind-specific form (`file`, `ctf`, `lab`, `hunt`) — scaffold all phase `.md` files + `SHOT_INDEX.txt` via `new_engagement.ps1` |
+| **Update Sample** | Select a slot, change lifecycle status and frontmatter (verdict/skills/platform/etc.), write back to tracker and findings |
+| **Screenshots** | Manage `50_screenshots/sample_XX/` (optional Pillow thumbnails) |
+| **Tools** | Run `validate.ps1`, `export-summary.ps1`, `redact-check.ps1`, `strip-exif.ps1`, Procmon/SIEM ingest with live output |
+| **Settings** | Repo root path and default analyst name; saved to a local config file |
 
 The GUI requires no external Python packages — only the standard library `tkinter`
 (included with Python on Windows; install `python3-tk` on Debian/Ubuntu or
@@ -414,7 +414,8 @@ Follow it for **any sample type** — PE binary, Office document, script, archiv
 Pick the next available number and create all files in one command:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\30_scripts\new_sample.ps1 -NextNumber 7
+# File sample (malware); use -Kind ctf|lab|hunt for other tracks — see ENGAGEMENTS.md
+powershell -ExecutionPolicy Bypass -File .\30_scripts\new_engagement.ps1 -NextNumber 7
 ```
 
 This creates:
