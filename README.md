@@ -72,7 +72,7 @@ See [`ENGAGEMENTS.md`](./ENGAGEMENTS.md) for the complete kind reference and [`W
 | See all engagements at a glance | [`INDEX.md`](./INDEX.md) |
 | Find by tag, MITRE technique, or kind | [`INDEX.md`](./INDEX.md) cross-reference sections |
 | Read a specific engagement's findings | `03_findings/sample_XX.md` |
-| Write a long-form narrative report | [`04_writeups/sample_NN.md`](./04_writeups/sample_01.md) (slots `sample_01`–`sample_50`) |
+| Write a long-form narrative report | [`04_writeups/`](./04_writeups/README.md) — kind templates + `scaffold_writeup.ps1` / `-WithLongWriteup` |
 | Understand how all engagement kinds work | [`ENGAGEMENTS.md`](./ENGAGEMENTS.md) |
 | See which ATT&CK techniques are covered | [`20_notes/MITRE-coverage.md`](./20_notes/MITRE-coverage.md) |
 | Learn what each tool signal means | [`20_notes/tooling-reference.md`](./20_notes/tooling-reference.md) |

@@ -185,6 +185,28 @@ powershell -ExecutionPolicy Bypass -File .\30_scripts\new_engagement.ps1 -NextNu
 
 `new_sample.ps1` still works as a backwards-compatible alias for `-Kind file`.
 
+### Optional long-form report (`04_writeups`)
+
+`03_findings` is the required outcome per kind. Use `04_writeups` only when you want a portfolio-deep narrative.
+
+| Kind | Template | Scaffold |
+|------|----------|----------|
+| `file` | [`04_writeups/_templates/file.md`](./04_writeups/_templates/file.md) | `scaffold_writeup.ps1 -Kind file` |
+| `ctf` | [`ctf.md`](./04_writeups/_templates/ctf.md) | `-Kind ctf` |
+| `lab` | [`lab.md`](./04_writeups/_templates/lab.md) | `-Kind lab` |
+| `hunt` | [`hunt.md`](./04_writeups/_templates/hunt.md) | `-Kind hunt` |
+
+```powershell
+# With new engagement
+powershell -ExecutionPolicy Bypass -File .\30_scripts\new_engagement.ps1 `
+    -NextNumber 7 -Kind ctf -Platform "HackTheBox" -Title "Lame" -WithLongWriteup
+
+# Standalone (infers kind from tracker when -Kind omitted)
+powershell -ExecutionPolicy Bypass -File .\30_scripts\scaffold_writeup.ps1 -NextNumber 7 -Kind ctf -Overwrite
+```
+
+Pre-seeded `04_writeups/sample_01`–`sample_50` files are **file**-oriented until you scaffold with `-Overwrite`. See [`04_writeups/README.md`](./04_writeups/README.md).
+
 ---
 
 ## Frontmatter by kind

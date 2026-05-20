@@ -8,6 +8,9 @@
     standard four phase folders (00_original, 01_static, 02_dynamic, 03_findings),
     a 50_screenshots folder, and a row in samples_tracker.csv.
 
+    Optional: -WithLongWriteup scaffolds 04_writeups/sample_XX.md from
+    04_writeups/_templates/{kind}.md (see scaffold_writeup.ps1).
+
     Kinds:
       file   - malware/artifact triage (PE / Office / Script / Archive)
       ctf    - CTF or HackTheBox/TryHackMe challenge
@@ -54,6 +57,9 @@
 
     # Threat hunt
     powershell -ExecutionPolicy Bypass -File .\30_scripts\new_engagement.ps1 -NextNumber 9 -Kind hunt -Title "Lateral movement via SMB"
+
+    # CTF with optional long-form 04_writeups scaffold
+    powershell -ExecutionPolicy Bypass -File .\30_scripts\new_engagement.ps1 -NextNumber 7 -Kind ctf -Platform "HackTheBox" -Title "Lame" -WithLongWriteup
 #>
 
 param(
@@ -72,7 +78,8 @@ param(
     [string]$Title    = '',
 
     [switch]$OverwriteEmpty,
-    [switch]$ReserveOnly
+    [switch]$ReserveOnly,
+    [switch]$WithLongWriteup
 )
 
 $root = Split-Path -Parent $PSScriptRoot
@@ -1354,11 +1361,30 @@ if (Test-Path $csvPath) {
 }
 
 # ============================================================
+# ====  OPTIONAL 04_WRITEUPS  ================================
+# ============================================================
+
+if ($WithLongWriteup) {
+    $scaffoldArgs = @{
+        SampleId = $id
+        Kind     = $Kind
+        Analyst  = $Analyst
+        Title    = $titleVal
+        Platform = $platformVal
+    }
+    if ($OverwriteEmpty) { $scaffoldArgs['Overwrite'] = $true }
+    & (Join-Path $PSScriptRoot 'scaffold_writeup.ps1') @scaffoldArgs
+}
+
+# ============================================================
 # ====  SUMMARY  =============================================
 # ============================================================
 
 Write-Host ""
 Write-Host "Done. $id scaffolded ($Kind)." -ForegroundColor Green
+if ($WithLongWriteup) {
+    Write-Host "  Long writeup: 04_writeups\$id.md" -ForegroundColor Green
+}
 Write-Host ""
 
 switch ($Kind) {
@@ -1370,6 +1396,11 @@ switch ($Kind) {
         Write-Host "  4. Run static tools; fill 01_static\$id.md"
         Write-Host "  5. Run with Procmon; fill 02_dynamic\$id.md"
         Write-Host "  6. Fill 03_findings\$id.md with verdict and IOCs"
+        if (-not $WithLongWriteup) {
+            Write-Host "  Optional: .\30_scripts\scaffold_writeup.ps1 -SampleId $id -Kind file"
+        } else {
+            Write-Host "  6b. Expand 04_writeups\$id.md for long-form malware report"
+        }
         Write-Host "  7. Run: .\30_scripts\close_sample.ps1 -SampleId $id -Status done -RunValidate -RunExport"
     }
     'ctf' {
@@ -1378,6 +1409,11 @@ switch ($Kind) {
         Write-Host "  2. Enumerate target; fill 01_static\$id.md"
         Write-Host "  3. Attempt solve; fill 02_dynamic\$id.md"
         Write-Host "  4. After solve (and writeup is permitted): fill 03_findings\$id.md"
+        if (-not $WithLongWriteup) {
+            Write-Host "  Optional: .\30_scripts\scaffold_writeup.ps1 -SampleId $id -Kind ctf"
+        } else {
+            Write-Host "  4b. Expand 04_writeups\$id.md for portfolio narrative (no raw flags)"
+        }
         Write-Host "  5. Run: .\30_scripts\close_sample.ps1 -SampleId $id -Status writeup_done -RunValidate -RunExport"
     }
     'lab' {
@@ -1386,6 +1422,11 @@ switch ($Kind) {
         Write-Host "  2. Work through lab; log steps in 01_static\$id.md"
         Write-Host "  3. Record results in 02_dynamic\$id.md"
         Write-Host "  4. Write reflection in 03_findings\$id.md"
+        if (-not $WithLongWriteup) {
+            Write-Host "  Optional: .\30_scripts\scaffold_writeup.ps1 -SampleId $id -Kind lab"
+        } else {
+            Write-Host "  4b. Expand 04_writeups\$id.md for portfolio narrative"
+        }
         Write-Host "  5. Run: .\30_scripts\close_sample.ps1 -SampleId $id -Status reviewed -RunValidate -RunExport"
     }
     'hunt' {
@@ -1394,6 +1435,11 @@ switch ($Kind) {
         Write-Host "  2. Run queries; log findings in 01_static\$id.md"
         Write-Host "  3. Analyse patterns; fill 02_dynamic\$id.md"
         Write-Host "  4. Write outcome in 03_findings\$id.md"
+        if (-not $WithLongWriteup) {
+            Write-Host "  Optional: .\30_scripts\scaffold_writeup.ps1 -SampleId $id -Kind hunt"
+        } else {
+            Write-Host "  4b. Expand 04_writeups\$id.md for detection narrative"
+        }
         Write-Host "  5. Run: .\30_scripts\close_sample.ps1 -SampleId $id -Status closed -RunValidate -RunExport"
     }
 }

@@ -12,7 +12,8 @@ All scripts require PowerShell 5.1+ and run from anywhere (they resolve the repo
 | Script | Purpose | When to run |
 |--------|---------|-------------|
 | `workflow_gui.py` | GUI: autofill phase files from pasted metadata (all engagement kinds) | Optional; alternative to `new_engagement.ps1` |
-| `new_engagement.ps1` | Scaffold any engagement slot (`file`, `ctf`, `lab`, `hunt`) | Before starting any engagement |
+| `new_engagement.ps1` | Scaffold any engagement slot (`file`, `ctf`, `lab`, `hunt`); optional `-WithLongWriteup` | Before starting any engagement |
+| `scaffold_writeup.ps1` | Kind-specific `04_writeups/sample_XX.md` from `_templates/` | Optional portfolio-deep report |
 | `new_sample.ps1` | Backward-compatible alias for `new_engagement.ps1 -Kind file` | Legacy; prefer `new_engagement.ps1` |
 | `ingest-procmon.ps1` | Parse Procmon CSV -> Markdown tables + IOC candidates in `02_dynamic` | After dynamic VM run (file kind) |
 | `ingest-events.ps1` | Parse SIEM/Sysmon event export -> timeline + IOC candidates in `02_dynamic` | After hunt data collection |
@@ -71,6 +72,7 @@ powershell -ExecutionPolicy Bypass -File .\30_scripts\new_engagement.ps1 -NextNu
 | `-Type` | `PE` | For `file` kind: `PE`, `Office`, `Script`, `Archive` |
 | `-Title` | auto | Short title (especially useful for ctf/lab/hunt) |
 | `-Analyst` | `Surrplexie` | Analyst name in frontmatter |
+| `-WithLongWriteup` | off | Also scaffold `04_writeups/sample_XX.md` from `_templates/{Kind}.md` |
 
 **Files created:**
 - `00_original/sample_XX.md` -- acquisition receipt or brief
@@ -79,6 +81,20 @@ powershell -ExecutionPolicy Bypass -File .\30_scripts\new_engagement.ps1 -NextNu
 - `03_findings/sample_XX.md` -- YAML frontmatter with `engagement_kind` + seeded fields
 - `50_screenshots/sample_XX/SHOT_INDEX.txt` -- screenshot map
 - `samples_tracker.csv` -- new row with `engagement_kind`, `date_started`, status
+- `04_writeups/sample_XX.md` -- only with `-WithLongWriteup` (kind-specific long-form template)
+
+---
+
+## scaffold_writeup.ps1
+
+Scaffolds optional [`04_writeups/`](../04_writeups/README.md) from [`_templates/`](../04_writeups/_templates/README.md).
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\30_scripts\scaffold_writeup.ps1 -NextNumber 9 -Kind ctf -Platform HackTheBox -Title Lame
+powershell -ExecutionPolicy Bypass -File .\30_scripts\scaffold_writeup.ps1 -SampleId sample_07 -Overwrite
+```
+
+`-Kind` defaults from `engagement_kind` in `samples_tracker.csv` when omitted. Use `-Overwrite` to replace an existing file-scaffold.
 
 ---
 
