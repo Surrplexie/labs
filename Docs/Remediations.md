@@ -1,4 +1,4 @@
-Dev logs, simple terms; **REM-1**, **REM-2**, … = major session logs. Sub-numbers (REM-1.1) optional for small follow-ups. GitHub pushing only — not named here.
+Dev logs rules; REM-1, REM-2 any of these terms are the new 'updates' like "Update 1", all major logs entered here. Note; REM-1.2, REM-1.4 etc. are only for GitHub commits and pushing, never named here.
 
 **Session arc (2026-05-18 → 2026-05-20):** Plan build/release → Tier 2 `04_writeups` → Tier 3 cross-engagement support (`45_hunt_queries`, `20_notes`) → Tier 4 GUI + validate 17/18 → Tier 5 README identity.
 
