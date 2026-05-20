@@ -37,12 +37,25 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
-# Pinned version -- keep in sync with build_requirements.txt
-$PYINSTALLER_VERSION = '6.20.0'
-
 $Root       = Split-Path $PSScriptRoot -Parent
 $Script     = Join-Path $PSScriptRoot  'workflow_gui.py'
 $ReqFile    = Join-Path $PSScriptRoot  'build_requirements.txt'
+
+# Single source of truth for PyInstaller pin
+if (-not (Test-Path $ReqFile)) {
+    Write-Error "build_requirements.txt not found: $ReqFile"
+    exit 1
+}
+$pinLine = Select-String -Path $ReqFile -Pattern '^\s*pyinstaller==' | Select-Object -First 1
+if (-not $pinLine) {
+    Write-Error "No pyinstaller== pin in $ReqFile"
+    exit 1
+}
+$PYINSTALLER_VERSION = ($pinLine.Line -replace '^\s*pyinstaller==\s*', '').Trim()
+if ([string]::IsNullOrWhiteSpace($PYINSTALLER_VERSION)) {
+    Write-Error "Invalid pyinstaller pin in $ReqFile"
+    exit 1
+}
 $DistDir    = Join-Path $Root 'dist'
 $BuildTmp   = Join-Path $DistDir '_build_tmp'
 $SpecDir    = Join-Path $DistDir '_spec'
@@ -88,12 +101,8 @@ Write-Host " OK" -ForegroundColor Green
 # Install pinned PyInstaller
 # ---------------------------------------------------------------------------
 if (-not $SkipPipInstall) {
-    Write-Host "Installing pinned PyInstaller $PYINSTALLER_VERSION..." -ForegroundColor Cyan
-    if (Test-Path $ReqFile) {
-        & $Python -m pip install -r $ReqFile --quiet
-    } else {
-        & $Python -m pip install "pyinstaller==$PYINSTALLER_VERSION" --quiet
-    }
+    Write-Host "Installing pinned PyInstaller $PYINSTALLER_VERSION (from build_requirements.txt)..." -ForegroundColor Cyan
+    & $Python -m pip install -r $ReqFile --quiet
     if ($LASTEXITCODE -ne 0) {
         Write-Error "pip install pyinstaller==$PYINSTALLER_VERSION failed."
         exit 1

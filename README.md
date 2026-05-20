@@ -351,9 +351,25 @@ sequential jobs:
 | PyInstaller | `6.20.0` (see [`30_scripts/build_requirements.txt`](./30_scripts/build_requirements.txt)) |
 | Runtime deps | None — `workflow_gui.py` uses only the Python standard library |
 
-To update the pin: change the version in `build_requirements.txt` **and** the
-`PYINSTALLER_VERSION` constant in both `build_exe.ps1` and `build_linux.sh`, then note
-the change in `30_scripts/schema/CHANGELOG.md`.
+To update the pin: change the `pyinstaller==` line in `build_requirements.txt` only
+(`build_exe.ps1` and `build_linux.sh` read it at build time), then note the change in
+`30_scripts/schema/CHANGELOG.md`.
+
+### Publishing a release (tag `vX.Y.Z`)
+
+Tag only when `workflow_gui` behavior (or the pinned build harness) should ship a new
+binary. Align the git tag with `APP_VERSION` in `workflow_gui.py` (e.g. `v3.0.1`).
+
+```powershell
+# Preflight + suggest tag from APP_VERSION
+powershell -ExecutionPolicy Bypass -File .\30_scripts\tag_release.ps1 -Suggest
+
+# After a clean commit on main:
+powershell -ExecutionPolicy Bypass -File .\30_scripts\tag_release.ps1 -Tag v3.0.1 -Push
+```
+
+Full checklist: [`RELEASE-TAGGING.md`](./RELEASE-TAGGING.md). Consumer verification:
+[`RELEASE-VERIFICATION.md`](./RELEASE-VERIFICATION.md).
 
 ### Verifying a downloaded binary
 

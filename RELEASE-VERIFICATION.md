@@ -168,5 +168,13 @@ SHA-256 (platform, Python patch version, and OS ABI differences are expected).
 
 ---
 
+## Publishing a new release (maintainers)
+
+See [`RELEASE-TAGGING.md`](./RELEASE-TAGGING.md) for when to tag, semver rules, and
+`30_scripts/tag_release.ps1` usage. Pushing a `v*` tag triggers the CI build that
+produces the assets you verify with this document.
+
+---
+
 *This document is part of the labs workflow tooling.*  
 *See [README.md](./README.md) for the full repository overview.*

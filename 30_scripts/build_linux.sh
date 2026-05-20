@@ -23,9 +23,6 @@
 
 set -e
 
-# Pinned version -- keep in sync with build_requirements.txt
-PYINSTALLER_VERSION="6.20.0"
-
 PYTHON="python3"
 SKIP_PIP=false
 
@@ -46,6 +43,19 @@ BUILD_TMP="$DIST_DIR/_build_tmp"
 SPEC_DIR="$DIST_DIR/_spec"
 OUTPUT="$DIST_DIR/workflow_gui"
 SUMS_FILE="$DIST_DIR/SHA256SUMS.txt"
+
+# Single source of truth for PyInstaller pin
+if [ ! -f "$REQ_FILE" ]; then
+    echo "build_requirements.txt not found: $REQ_FILE" >&2
+    exit 1
+fi
+PYINSTALLER_VERSION=$(
+    grep -E '^[[:space:]]*pyinstaller==' "$REQ_FILE" | head -n 1 | cut -d= -f3 | tr -d '[:space:]'
+)
+if [ -z "$PYINSTALLER_VERSION" ]; then
+    echo "No pyinstaller== pin in $REQ_FILE" >&2
+    exit 1
+fi
 
 echo ""
 echo "=== Workflow GUI -- Linux Build ==="
@@ -76,12 +86,8 @@ echo -n "Checking tkinter... "
 
 # -- Install pinned PyInstaller
 if [ "$SKIP_PIP" = false ]; then
-    echo "Installing pinned PyInstaller $PYINSTALLER_VERSION..."
-    if [ -f "$REQ_FILE" ]; then
-        "$PYTHON" -m pip install -r "$REQ_FILE" --quiet
-    else
-        "$PYTHON" -m pip install "pyinstaller==$PYINSTALLER_VERSION" --quiet
-    fi
+    echo "Installing pinned PyInstaller $PYINSTALLER_VERSION (from build_requirements.txt)..."
+    "$PYTHON" -m pip install -r "$REQ_FILE" --quiet
 
     # Confirm installed version
     INSTALLED_VER=$("$PYTHON" -m pip show pyinstaller 2>/dev/null | grep "^Version:" | awk '{print $2}')
