@@ -32,6 +32,119 @@ folder changes based on `engagement_kind`.
 | `02_dynamic/` | Dynamic triage (Procmon, ProcExp, TCPView) | Solve attempt (approach, exploits, pivots) | Results (outcomes, errors, screenshots) | Analysis (timeline, correlation, patterns) |
 | `03_findings/` | Verdict + IOC table + portfolio blurb | Writeup + methodology + public-safe flag proof | Reflection + objectives met + skills | Outcome + detections + confidence + next steps |
 
+`04_writeups/` and `50_screenshots/` use the same `sample_XX` IDs for all kinds. Long-form
+`04_writeups` are optional for every kind; **`03_findings` is the primary finished artifact**
+that feeds `INDEX.md` and `dist/portfolio.json`.
+
+---
+
+## Slot reservation & Tier 1 conventions
+
+**Tier 1** means using the existing layout only — no new top-level folders, no second
+tracker, no kind-specific directory names. CTF, lab, and hunt work run through the same
+`sample_01`–`sample_50` slots as malware; `engagement_kind` and the correct **status
+lifecycle** tell the automation which rules apply.
+
+This logbook is **malware-triage primary**. Reserve slots so HTB rooms and course labs do
+not collide with MalwareBazaar sample numbers you already associate with file work.
+
+### Recommended slot ranges
+
+| Slots | Kind | Use for |
+|-------|------|---------|
+| `sample_01`–`30` | `file` | Malware / suspicious artifacts (MalwareBazaar, drops, docs) |
+| `sample_31`–`40` | `ctf` | HackTheBox, TryHackMe, PicoCTF, event challenges |
+| `sample_41`–`45` | `lab` | Guided course modules, training paths |
+| `sample_46`–`50` | `hunt` | Hypothesis-driven detection / SIEM exercises |
+
+These ranges are a **convention**, not enforced by scripts. Empty tracker rows may still
+show `engagement_kind: file` until you scaffold — set the correct kind with
+`new_engagement.ps1 -Kind ...` when you claim a slot.
+
+**Rules:**
+
+- Pick the next free number **inside the range** for that activity type.
+- Do not turn an in-progress malware slot into a CTF entry; use a new number in the CTF range.
+- Set `-Kind` at scaffold time; do not rely on fixing `engagement_kind` later after filling templates.
+
+### Folder names are aliases (mental model)
+
+The directories are named for the file-analysis track. For other kinds, read them as phases:
+
+| Path | `file` | `ctf` | `lab` | `hunt` |
+|------|--------|-------|-------|--------|
+| `00_original/` | Acquisition receipt | Challenge brief | Lab brief / objectives | Scope / hypothesis |
+| `01_static/` | Static triage | Recon / enumeration | Step log | Queries / collection |
+| `02_dynamic/` | Dynamic triage | Solve attempt | Results / proof | Timeline / analysis |
+| `03_findings/` | Verdict + IOC slice | **Writeup** (portfolio) | **Reflection** | **Outcome** |
+
+### Tracker columns by kind
+
+| Column | `file` | `ctf` / `lab` | `hunt` |
+|--------|--------|---------------|--------|
+| `sha256`, `mb_url` | Fill from Bazaar / acquisition | Leave blank | Blank unless a hash is confirmed |
+| `name_tag` | Filename or label | Challenge or module title (`-Title`) | Short hunt title |
+| `platform` | Usually empty | HackTheBox, TryHackMe, SANS, etc. | Optional (e.g. tool or dataset name) |
+| `score_flag` | Optional notes | Public-safe only: `solved`, `20 pts` — **never** a raw flag | e.g. `closed`, `detections_found` |
+| `vm_folder_hint` | VM path to sample on disk | Usually empty | Usually empty |
+| `notes` | Analysis reminders | Retired date, writeup-safe reminder | Data sources, timebox |
+
+### Shared artifacts — use or skip
+
+| Artifact | `file` | `ctf` | `lab` | `hunt` |
+|----------|--------|-------|-------|--------|
+| `00`–`03`, `50_screenshots/` | Yes | Yes | Yes | Yes |
+| `40_iocs/indicators.csv` | Yes | **No** | **No** | Yes (confirmed IOCs only) |
+| `20_notes/MITRE-coverage.md` | Primary | Optional | Optional | When mapping techniques |
+| `20_notes/skills-coverage.md` | Yes | **Yes** | **Yes** | Yes |
+| `04_writeups/` | Optional deep report | Optional (usually skip) | Optional | Optional |
+
+CTF/lab indicators belong in `03_findings` tables or frontmatter — not in the shared IOC CSV.
+
+### Status names are kind-specific
+
+Do not use file statuses (`static`, `dynamic`, `done`) on CTF/lab/hunt rows. Use the
+lifecycle in [Status lifecycles](#status-lifecycles) below. Wrong statuses confuse
+`close_sample.ps1` checklists and `INDEX.md` export grouping.
+
+### Before every commit (all kinds)
+
+```powershell
+# If screenshots changed:
+powershell -ExecutionPolicy Bypass -File .\30_scripts\strip-exif.ps1 -SampleId sample_XX
+
+powershell -ExecutionPolicy Bypass -File .\30_scripts\redact-check.ps1
+
+# Terminal status for your kind, then validate + regen index:
+powershell -ExecutionPolicy Bypass -File .\30_scripts\close_sample.ps1 `
+    -SampleId sample_XX -Status <kind-terminal-status> -RunValidate -RunExport
+```
+
+Kind-terminal statuses: `done` (file), `writeup_done` (ctf), `reviewed` (lab), `closed` (hunt).
+
+After closing a non-file engagement, update [`20_notes/skills-coverage.md`](./20_notes/skills-coverage.md)
+from the `skills[]` list in `03_findings` frontmatter.
+
+### Common mistakes
+
+| Mistake | Fix |
+|---------|-----|
+| HTB work in a slot still `engagement_kind: file` | Scaffold with `-Kind ctf` in the CTF slot range |
+| `-Status done` on a CTF row | Use `solved` / `writeup_done` |
+| Raw flag in markdown or `score_flag` | Redact; use `[FLAG REDACTED]` until retired |
+| Challenge IPs in `40_iocs/indicators.csv` | Keep observables in `03_findings` only |
+| Filling malware-only `04_writeups` for a CTF | Put the portfolio narrative in `03_findings` |
+| `02_dynamic` left empty but CTF marked solved | Add solve steps — `validate.ps1` check 14 warns on thin logs |
+
+### Tier 1 success criteria
+
+- At least one **closed** `ctf` or `lab` and one **closed** `hunt` visible under the correct section in [`INDEX.md`](./INDEX.md).
+- `validate.ps1` exits OK before commit.
+- Malware slots in your reserved file range stay free of CTF/lab content.
+- No new folders required — only discipline on kind, slot, status, and where data lives.
+
+For step-by-step tracks, see [`WORKFLOW.md`](./WORKFLOW.md) (Tracks A–D).
+
 ---
 
 ## Status lifecycles
