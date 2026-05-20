@@ -209,6 +209,31 @@ Pre-seeded `04_writeups/sample_01`–`sample_50` files are **file**-oriented unt
 
 ---
 
+## Supporting areas (beyond `04_writeups`)
+
+Malware workflow stays in `00`–`03` + `40_iocs`. Cross-engagement trackers and hunt query reuse live in sibling folders under `20_notes/` and `45_hunt_queries/`.
+
+| Area | Path | Kinds | Purpose |
+|------|------|-------|---------|
+| Hunt query library | [`45_hunt_queries/`](./45_hunt_queries/README.md) | `hunt` | Reusable sanitized SPL/KQL/Sigma; link from `01_static`, `query_refs` in `03_findings` |
+| CTF machine index | [`20_notes/ctf-machine-index.md`](./20_notes/ctf-machine-index.md) | `ctf` | Platform / machine → slot tracker |
+| Lab curriculum map | [`20_notes/lab-curriculum-map.md`](./20_notes/lab-curriculum-map.md) | `lab` | Course / module → slot tracker |
+| Detection catalog | [`20_notes/detection-catalog.md`](./20_notes/detection-catalog.md) | `file`, `hunt` | Cross-engagement detection ideas |
+| CTF patterns | [`20_notes/ctf-patterns/`](./20_notes/ctf-patterns/README.md) | `ctf` | Reusable technique notes (like `case-series/` for malware) |
+| Skills rollup | [`20_notes/skills-coverage.md`](./20_notes/skills-coverage.md) | all | Manual skills depth tracker |
+
+```powershell
+# New reusable hunt query
+powershell -ExecutionPolicy Bypass -File .\30_scripts\new_hunt_query.ps1 `
+    -QueryId schtasks-persistence -Platform sigma -Title "Scheduled task creation"
+```
+
+`40_iocs/` remains **file + hunt only** — never CTF flags or lab credentials. See [`40_iocs/README.md`](./40_iocs/README.md).
+
+Full `20_notes` index: [`20_notes/README.md`](./20_notes/README.md).
+
+---
+
 ## Frontmatter by kind
 
 All findings/writeup files carry YAML frontmatter. `schema_version: 2` is for

@@ -76,6 +76,7 @@ See [`ENGAGEMENTS.md`](./ENGAGEMENTS.md) for the complete kind reference and [`W
 | Understand how all engagement kinds work | [`ENGAGEMENTS.md`](./ENGAGEMENTS.md) |
 | See which ATT&CK techniques are covered | [`20_notes/MITRE-coverage.md`](./20_notes/MITRE-coverage.md) |
 | Learn what each tool signal means | [`20_notes/tooling-reference.md`](./20_notes/tooling-reference.md) |
+| CTF machines / lab modules / hunt queries | [`20_notes/README.md`](./20_notes/README.md), [`45_hunt_queries/`](./45_hunt_queries/README.md) |
 | Use or understand the automation scripts | [`30_scripts/README.md`](./30_scripts/README.md) |
 | Access raw IOC data | [`40_iocs/indicators.csv`](./40_iocs/indicators.csv) |
 | Walk through any workflow track step by step | [`WORKFLOW.md`](./WORKFLOW.md) |
@@ -126,20 +127,30 @@ labs/
 |-- 10_extracted/                <- Non-executable artifacts (string dumps, NSIS scripts)
 |   `-- README.md
 |
-|-- 20_notes/                    <- Research synthesis, tooling reference, case series
+|-- 20_notes/                    <- Cross-engagement synthesis (malware + ctf + lab + hunt)
 |   |-- README.md
-|   |-- MITRE-coverage.md        <- ATT&CK technique coverage tracker
-|   |-- tooling-reference.md     <- Tool quick-reference and signal interpretation
-|   `-- case-series/
-|       |-- README.md
-|       `-- NSIS-installers.md   <- Cross-sample pattern note: NSIS delivery
+|   |-- MITRE-coverage.md        <- ATT&CK (file kind)
+|   |-- tooling-reference.md     <- Malware VM tools
+|   |-- ctf-tooling-reference.md <- CTF / HTB / THM tools
+|   |-- hunt-reference.md        <- Hunt methodology and event IDs
+|   |-- ctf-machine-index.md     <- CTF machine -> sample_XX tracker
+|   |-- lab-curriculum-map.md    <- Course lab -> sample_XX tracker
+|   |-- detection-catalog.md     <- Detection ideas (file + hunt)
+|   |-- skills-coverage.md       <- Skills practiced (all kinds)
+|   |-- case-series/             <- Malware pattern notes
+|   `-- ctf-patterns/            <- CTF technique pattern notes
+|
+|-- 45_hunt_queries/             <- Reusable sanitized hunt queries (hunt kind)
+|   |-- README.md
+|   |-- INDEX.md
+|   `-- _examples/
 |
 |-- 30_scripts/                  <- PowerShell lifecycle and hygiene automation
 |   |-- README.md                <- Script documentation and usage examples
 |   |-- new_engagement.ps1       <- Scaffold slot (file / ctf / lab / hunt)
 |   |-- new_sample.ps1           <- Alias for new_engagement.ps1 -Kind file
 |   |-- close_sample.ps1         <- Advance status, print close checklist
-|   |-- validate.ps1             <- Structural integrity (15 checks, kind-aware)
+|   |-- validate.ps1             <- Structural integrity (16 checks, kind-aware)
 |   |-- export-summary.ps1       <- Regenerate INDEX.md + dist/summary.json
 |   |-- redact-check.ps1         <- Scan for PII / non-VM paths before committing
 |   |-- strip-exif.ps1           <- Strip EXIF metadata from screenshots
@@ -197,7 +208,7 @@ See [`30_scripts/README.md`](./30_scripts/README.md) for full documentation and 
 
 Every push and pull request runs `.github/workflows/integrity.yml` on GitHub Actions, which executes three checks automatically:
 
-1. **`validate.ps1`** — 15 structural checks (kind-aware: tracker, phase files, IOCs, orphans, forbidden extensions, schema version, CTF/lab flags, skills, and more)
+1. **`validate.ps1`** — 16 structural checks (kind-aware: tracker, phase files, IOCs, orphans, forbidden extensions, schema version, CTF/lab flags, skills, hunt query_refs, and more)
 2. **`redact-check.ps1`** — scans for non-VM paths, email addresses, internal hostnames, and raw CTF flag patterns
 
 The job fails and blocks merge on any FAIL-level finding.
@@ -250,7 +261,7 @@ Current versions: **`schema_version: 1`** (legacy file engagements) or **`schema
 
 ### What validate.ps1 checks
 
-Running `validate.ps1` before every commit runs **15 checks**, including: tracker schema,
+Running `validate.ps1` before every commit runs **16 checks**, including: tracker schema,
 `engagement_kind`, per-slot phase files (kind-aware depth), findings frontmatter and
 `schema_version`, IOC CSV schema, orphans, forbidden extensions in the working tree,
 screenshot folders, raw flag/credential patterns, and CTF/lab closure depth. See

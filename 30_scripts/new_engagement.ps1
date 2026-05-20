@@ -1084,9 +1084,11 @@ $tmplHuntCollection = @'
 
 ## Queries run
 
-| Query | Tool / source | Results count | Notes |
-|-------|--------------|---------------|-------|
+| Query | Library ref / tool | Results count | Notes |
+|-------|-------------------|---------------|-------|
 | | | | |
+
+<!-- Reusable queries: link 45_hunt_queries/<slug>.md (see 45_hunt_queries/README.md). One-off output stays in Raw findings below. -->
 
 ## Raw findings (before filtering)
 
@@ -1164,6 +1166,7 @@ tags:
   - hunt
 skills:
   - ""
+query_refs: []   # slugs under 45_hunt_queries/ (e.g. schtasks-persistence)
 ---
 
 # SAMPLE_ID -- hunt outcome

@@ -18,6 +18,10 @@ or cross-referencing with external threat intelligence.
 For `ctf` and `lab` kinds, any indicators found (if applicable) belong in the
 `03_findings` frontmatter or the engagement notes -- not in this shared CSV.
 
+**Not for hunt queries:** reusable SPL/KQL/Sigma live in [`45_hunt_queries/`](../45_hunt_queries/README.md). Only **confirmed** IOC values from a hunt belong here.
+
+**Detection ideas (not IOC rows):** [`20_notes/detection-catalog.md`](../20_notes/detection-catalog.md).
+
 ---
 
 ## Schema

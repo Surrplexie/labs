@@ -22,7 +22,7 @@ jobs:
 
       # -----------------------------------------------------------------------
       # 1. Structural integrity - validate.ps1
-      #    Runs all 15 checks (kind-aware); fails on any FAIL-level finding.
+      #    Runs all 16 checks (kind-aware); fails on any FAIL-level finding.
       #    -FailOnWarn intentionally NOT set -- WARNs (e.g. thin skeletons,
       #    missing skills on in-progress engagements) don't block commits.
       # -----------------------------------------------------------------------

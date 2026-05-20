@@ -1,8 +1,11 @@
 # Case Series Notes
 
-Cross-sample synthesis notes grouped by theme, packaging type, delivery mechanism,
-or behavioral family. Each note links to individual sample findings and summarizes
-shared patterns, distinguishing characteristics, and analytical lessons learned.
+Cross-sample synthesis for **`file`-kind malware** — themes, packaging, delivery, or behavioral families.
+
+For CTF technique patterns see [`../ctf-patterns/README.md`](../ctf-patterns/README.md).  
+For hunt detections see [`../detection-catalog.md`](../detection-catalog.md) and [`../../45_hunt_queries/`](../../45_hunt_queries/README.md).
+
+Each note links to individual `03_findings` files and summarizes shared patterns and lessons learned.
 
 ## How to use
 

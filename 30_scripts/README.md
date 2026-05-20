@@ -14,6 +14,7 @@ All scripts require PowerShell 5.1+ and run from anywhere (they resolve the repo
 | `workflow_gui.py` | GUI: autofill phase files from pasted metadata (all engagement kinds) | Optional; alternative to `new_engagement.ps1` |
 | `new_engagement.ps1` | Scaffold any engagement slot (`file`, `ctf`, `lab`, `hunt`); optional `-WithLongWriteup` | Before starting any engagement |
 | `scaffold_writeup.ps1` | Kind-specific `04_writeups/sample_XX.md` from `_templates/` | Optional portfolio-deep report |
+| `new_hunt_query.ps1` | Scaffold `45_hunt_queries/<slug>.md` (SPL/KQL/Sigma) | Reusable hunt query library |
 | `new_sample.ps1` | Backward-compatible alias for `new_engagement.ps1 -Kind file` | Legacy; prefer `new_engagement.ps1` |
 | `ingest-procmon.ps1` | Parse Procmon CSV -> Markdown tables + IOC candidates in `02_dynamic` | After dynamic VM run (file kind) |
 | `ingest-events.ps1` | Parse SIEM/Sysmon event export -> timeline + IOC candidates in `02_dynamic` | After hunt data collection |

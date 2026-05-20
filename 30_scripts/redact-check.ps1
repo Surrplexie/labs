@@ -114,7 +114,13 @@ $allFiles = Get-ChildItem -Path $Root -Recurse -File -ErrorAction SilentlyContin
         if (-not $IncludeIocFiles -and $rel -like '40_iocs*') { $skip = $true }
         -not $skip
     } |
-    Where-Object { $_.Extension -in @('.md', '.csv', '.txt') }
+    Where-Object {
+        $ext = $_.Extension.ToLower()
+        $rel = $_.FullName.Substring($Root.Length).TrimStart('\', '/')
+        if ($ext -in @('.md', '.csv', '.txt')) { return $true }
+        if ($rel -like '45_hunt_queries*' -and $ext -in @('.kql', '.spl', '.yaml', '.yml')) { return $true }
+        return $false
+    }
 
 if ($SampleId -ne '') {
     $allFiles = $allFiles | Where-Object { $_.Name -like "*$SampleId*" -or $_.FullName -like "*$SampleId*" }

@@ -265,6 +265,7 @@ if ($kind -eq 'hunt') {
     }
     if ($Status -in @('collecting', 'analyzing', 'closed')) {
         Write-Head "-- 01_static (collection) --"
+        Write-Check "Reusable queries linked from 45_hunt_queries/ where applicable"
         Write-Check "Queries run and results summarised"
         Write-Check "Event IDs / sources referenced"
         Write-Check "Raw findings sanitised of PII before commit"
@@ -281,6 +282,7 @@ if ($kind -eq 'hunt') {
     if ($Status -eq 'closed') {
         Write-Head "-- 03_findings (outcome) --"
         Write-Check "YAML frontmatter: schema_version 2, detections_found, outcome set"
+        Write-Check "query_refs resolve under 45_hunt_queries/ (if listed)"
         Write-Check "Confirmed detections table complete"
         Write-Check "Confidence reasoning written"
         Write-Check "Recommendations noted"

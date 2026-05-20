@@ -29,12 +29,15 @@ keywords:
 skills_practiced:
   - "<FILL>"
 
+query_refs: []  # optional: slugs from 45_hunt_queries/ used in this hunt
+
 evidence_index:
   scope: ../00_original/SAMPLE_ID.md
   collection: ../01_static/SAMPLE_ID.md
   analysis: ../02_dynamic/SAMPLE_ID.md
   outcome: ../03_findings/SAMPLE_ID.md
   screenshots: ../50_screenshots/SAMPLE_ID/
+  hunt_queries: ../45_hunt_queries/
   iocs_csv: ../40_iocs/indicators.csv
 ---
 
@@ -114,7 +117,7 @@ Canonical scope: [`00_original/SAMPLE_ID.md`](../00_original/SAMPLE_ID.md)
 <FILL -- KQL / Splunk / Sigma; use placeholders for index and host>
 ```
 
-See [`20_notes/hunt-reference.md`](../../20_notes/hunt-reference.md).
+See [`20_notes/hunt-reference.md`](../../20_notes/hunt-reference.md) and reusable queries in [`45_hunt_queries/`](../../45_hunt_queries/README.md).
 
 ---
 

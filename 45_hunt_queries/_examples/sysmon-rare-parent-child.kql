@@ -1,0 +1,10 @@
+// EXAMPLE ONLY -- copy logic into a .md query file or your 01_static hunt log.
+// Replace HOST_PLACEHOLDER and index names before commit.
+
+// Rare parent -> child process chains (last 7 days)
+DeviceProcessEvents
+| where Timestamp > ago(7d)
+| where DeviceName !contains "HOST_PLACEHOLDER"
+| summarize Count=count() by InitiatingProcessFileName, FileName
+| where Count < 5
+| order by Count asc

@@ -5,6 +5,8 @@
 For malware analysis tooling see [`tooling-reference.md`](./tooling-reference.md).
 For CTF tooling see [`ctf-tooling-reference.md`](./ctf-tooling-reference.md).
 
+**Reusable query library:** [`45_hunt_queries/`](../45_hunt_queries/README.md) — sanitized SPL/KQL/Sigma stored per slug; link from hunt `01_static` instead of duplicating full queries. Scaffold with `30_scripts/new_hunt_query.ps1`.
+
 ---
 
 ## Hunt methodology

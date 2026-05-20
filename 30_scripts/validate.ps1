@@ -22,6 +22,7 @@
      13.  Kind field presence        - warns if engagement_kind is missing in tracker.
      14.  CTF solve depth            - warns if solved CTF has thin/placeholder 02_dynamic.
      15.  Skills field population    - warns if closed non-file engagement has no skills[].
+     16.  Hunt query_refs            - warns if hunt references missing 45_hunt_queries files.
 
     Exit code 0 = all checks passed (WARNs allowed).
     Exit code 1 = one or more FAIL checks.
@@ -445,6 +446,63 @@ if ($closedNonFileRows.Count -eq 0) {
     }
     if (-not $skillsIssues) {
         Write-Pass "All closed non-file engagements have skills field populated"
+    }
+}
+
+# ---------------------------------------------------------------------------
+# CHECK 16: Hunt query_refs resolve under 45_hunt_queries/
+# ---------------------------------------------------------------------------
+Write-Section "16. Hunt query_refs library check"
+
+$huntQueryDir = Join-Path $Root '45_hunt_queries'
+if (-not (Test-Path $huntQueryDir)) {
+    Write-Info "45_hunt_queries/ not present -- skip."
+} else {
+    $huntRows = @($nonEmptyRows | Where-Object {
+        (Get-EngagementKind -Row $_ -Content $null) -eq 'hunt'
+    })
+    if ($huntRows.Count -eq 0) {
+        Write-Info "No hunt engagements to check."
+    } else {
+        $refIssues = $false
+        foreach ($row in $huntRows) {
+            $id = $row.sample_id.Trim()
+            $findPath = Join-Path $Root "03_findings\$id.md"
+            if (-not (Test-Path $findPath)) { continue }
+            $raw = Get-Content $findPath -Raw -Encoding UTF8 -ErrorAction SilentlyContinue
+            if (-not $raw) { continue }
+
+            $refs = @()
+            if ($raw -match '(?m)^query_refs\s*:') {
+                $block = if ($raw -match '(?s)query_refs\s*:\s*\r?\n((?:\s+-\s+\S+\r?\n)+)') { $Matches[1] } else { '' }
+                $refs = [regex]::Matches($block, '(?m)^\s+-\s+(\S+)') | ForEach-Object { $_.Groups[1].Value.Trim() }
+            }
+            $staticPath = Join-Path $Root "01_static\$id.md"
+            if (Test-Path $staticPath) {
+                $sRaw = Get-Content $staticPath -Raw -Encoding UTF8 -ErrorAction SilentlyContinue
+                if ($sRaw) {
+                    $linkRefs = [regex]::Matches($sRaw, '45_hunt_queries[/\\]([a-z0-9]+(?:-[a-z0-9]+)*)\.md') |
+                        ForEach-Object { $_.Groups[1].Value }
+                    $refs = @($refs + $linkRefs) | Select-Object -Unique
+                }
+            }
+
+            if ($refs.Count -eq 0) { continue }
+
+            foreach ($slug in $refs) {
+                if ($slug -eq '_examples') { continue }
+                $qPath = Join-Path $huntQueryDir "$slug.md"
+                if (-not (Test-Path $qPath)) {
+                    Write-Warn "$id : query ref '$slug' -- missing 45_hunt_queries\$slug.md"
+                    $refIssues = $true
+                } else {
+                    Write-Pass "$id : query ref '$slug' resolves"
+                }
+            }
+        }
+        if (-not $refIssues) {
+            Write-Pass "All hunt query_refs resolve (or none declared)"
+        }
     }
 }
 
