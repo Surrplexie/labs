@@ -23,6 +23,8 @@
      14.  CTF solve depth            - warns if solved CTF has thin/placeholder 02_dynamic.
      15.  Skills field population    - warns if closed non-file engagement has no skills[].
      16.  Hunt query_refs            - warns if hunt references missing 45_hunt_queries files.
+     17.  Lab completion depth       - warns if reviewed lab has thin step log or empty objectives.
+     18.  Hunt collection depth      - warns if closed hunt has thin 01_static / no query evidence.
 
     Exit code 0 = all checks passed (WARNs allowed).
     Exit code 1 = one or more FAIL checks.
@@ -503,6 +505,106 @@ if (-not (Test-Path $huntQueryDir)) {
         if (-not $refIssues) {
             Write-Pass "All hunt query_refs resolve (or none declared)"
         }
+    }
+}
+
+# ---------------------------------------------------------------------------
+# CHECK 17: Lab completion depth -- reviewed labs need step log + objectives
+# ---------------------------------------------------------------------------
+Write-Section "17. Lab completion depth check"
+
+$closedLabRows = @($nonEmptyRows | Where-Object {
+    $k = Get-EngagementKind -Row $_ -Content $null
+    $s = $_.status.Trim().ToLower()
+    $k -eq 'lab' -and $s -in @('reviewed', 'objectives_met')
+})
+
+if ($closedLabRows.Count -eq 0) {
+    Write-Info "No completed lab engagements to check."
+} else {
+    $labDepthIssues = $false
+    foreach ($row in $closedLabRows) {
+        $id = $row.sample_id.Trim()
+        $staticPath = Join-Path $Root "01_static\$id.md"
+        $findPath   = Join-Path $Root "03_findings\$id.md"
+
+        if (Test-Path $staticPath) {
+            $staticContent = Get-Content $staticPath -Raw -Encoding UTF8 -ErrorAction SilentlyContinue
+            $lineCount = ($staticContent -split "`r`n|`n").Count
+            $phCount   = ([regex]::Matches($staticContent, 'PENDING|TODO|_Not captured_|<FILL>')).Count
+            if ($lineCount -lt 25) {
+                Write-Warn "$id : 01_static is thin ($lineCount lines) for a completed lab -- log steps"
+                $labDepthIssues = $true
+            } elseif ($phCount -gt 8) {
+                Write-Warn "$id : 01_static has $phCount unfilled placeholders for a completed lab"
+                $labDepthIssues = $true
+            } else {
+                Write-Pass "$id : 01_static step log has adequate depth"
+            }
+        }
+
+        if (Test-Path $findPath) {
+            $fContent = Get-Content $findPath -Raw -Encoding UTF8 -ErrorAction SilentlyContinue
+            $hasObjectives = $fContent -match '(?m)^objectives\s*:'
+            $objMet        = (Get-FrontmatterValue -Content $fContent -Key 'objectives_met') -eq 'true'
+            $objList       = $fContent -match '(?s)objectives\s*:\s*\r?\n(\s+-\s+\S+)'
+            if (-not $hasObjectives -and -not $objMet) {
+                Write-Warn "$id : 03_findings missing objectives_met or objectives list for completed lab"
+                $labDepthIssues = $true
+            } elseif (-not $objList -and -not $objMet) {
+                Write-Warn "$id : 03_findings objectives appear empty for completed lab"
+                $labDepthIssues = $true
+            } else {
+                Write-Pass "$id : 03_findings objectives documented"
+            }
+        }
+    }
+    if (-not $labDepthIssues) {
+        Write-Pass "All completed lab engagements have adequate depth"
+    }
+}
+
+# ---------------------------------------------------------------------------
+# CHECK 18: Hunt collection depth -- closed hunts need queries in 01_static
+# ---------------------------------------------------------------------------
+Write-Section "18. Hunt collection depth check"
+
+$closedHuntRows = @($nonEmptyRows | Where-Object {
+    $k = Get-EngagementKind -Row $_ -Content $null
+    $s = $_.status.Trim().ToLower()
+    $k -eq 'hunt' -and $s -eq 'closed'
+})
+
+if ($closedHuntRows.Count -eq 0) {
+    Write-Info "No closed hunt engagements to check."
+} else {
+    $huntDepthIssues = $false
+    foreach ($row in $closedHuntRows) {
+        $id = $row.sample_id.Trim()
+        $staticPath = Join-Path $Root "01_static\$id.md"
+        if (-not (Test-Path $staticPath)) { continue }
+
+        $staticContent = Get-Content $staticPath -Raw -Encoding UTF8 -ErrorAction SilentlyContinue
+        $lineCount   = ($staticContent -split "`r`n|`n").Count
+        $phCount     = ([regex]::Matches($staticContent, 'PENDING|TODO|_Not captured_|<FILL>')).Count
+        $hasQueryLib = $staticContent -match '45_hunt_queries'
+        $hasQueryTable = $staticContent -match '(?s)## Queries run.*\|[^\s|][^|]*\|'
+
+        if ($lineCount -lt 25 -and -not $hasQueryLib) {
+            Write-Warn "$id : 01_static is thin ($lineCount lines) for a closed hunt -- log queries and findings"
+            $huntDepthIssues = $true
+        } elseif ($phCount -gt 8 -and -not $hasQueryLib) {
+            Write-Warn "$id : 01_static has $phCount unfilled placeholders for a closed hunt"
+            $huntDepthIssues = $true
+        } elseif (-not $hasQueryTable -and -not $hasQueryLib) {
+            Write-Warn "$id : 01_static missing query log (Queries run table or 45_hunt_queries link)"
+            $huntDepthIssues = $true
+        } else {
+            Write-Pass "$id : 01_static has adequate hunt collection depth"
+        }
+    }
+    if (-not $huntDepthIssues) {
+        Write-Pass "All closed hunt engagements have adequate collection depth"
     }
 }
 

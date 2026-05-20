@@ -232,6 +232,18 @@ powershell -ExecutionPolicy Bypass -File .\30_scripts\new_hunt_query.ps1 `
 
 Full `20_notes` index: [`20_notes/README.md`](./20_notes/README.md).
 
+### GUI (`workflow_gui.py` v3.1+)
+
+The **Tools** tab uses **Context sample ID** to show kind-appropriate actions:
+
+| Kind | Tools shown |
+|------|-------------|
+| `file` | Procmon ingest → `02_dynamic` |
+| `hunt` | Event ingest, **New hunt query** scaffold → `45_hunt_queries/` |
+| `ctf` / `lab` | Common scripts only (validate, export, redact, EXIF) |
+
+See [`30_scripts/WORKFLOW-GUI.md`](./30_scripts/WORKFLOW-GUI.md).
+
 ---
 
 ## Frontmatter by kind

@@ -21,7 +21,7 @@ All scripts require PowerShell 5.1+ and run from anywhere (they resolve the repo
 | `install-hooks.ps1` | Install pre-push git hook (Windows) | Once, after cloning |
 | `install-hooks.sh` | Install pre-push git hook (Linux) | Once, after cloning |
 | `close_sample.ps1` | Advance slot status, print kind-specific close checklist | After each analysis phase |
-| `validate.ps1` | Structural integrity check (13+ checks, kind-aware) | Before any commit |
+| `validate.ps1` | Structural integrity check (18 checks, kind-aware) | Before any commit |
 | `export-summary.ps1` | Regenerate `INDEX.md` + `dist/summary.json` + `dist/portfolio.json` | After closing an engagement or editing frontmatter |
 | `redact-check.ps1` | Scan for PII / non-VM paths in .md files | Before any commit |
 | `strip-exif.ps1` | Strip EXIF metadata from screenshot images | Before committing new screenshots |

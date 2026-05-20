@@ -150,7 +150,7 @@ labs/
 |   |-- new_engagement.ps1       <- Scaffold slot (file / ctf / lab / hunt)
 |   |-- new_sample.ps1           <- Alias for new_engagement.ps1 -Kind file
 |   |-- close_sample.ps1         <- Advance status, print close checklist
-|   |-- validate.ps1             <- Structural integrity (16 checks, kind-aware)
+|   |-- validate.ps1             <- Structural integrity (18 checks, kind-aware)
 |   |-- export-summary.ps1       <- Regenerate INDEX.md + dist/summary.json
 |   |-- redact-check.ps1         <- Scan for PII / non-VM paths before committing
 |   |-- strip-exif.ps1           <- Strip EXIF metadata from screenshots
@@ -208,7 +208,7 @@ See [`30_scripts/README.md`](./30_scripts/README.md) for full documentation and 
 
 Every push and pull request runs `.github/workflows/integrity.yml` on GitHub Actions, which executes three checks automatically:
 
-1. **`validate.ps1`** — 16 structural checks (kind-aware: tracker, phase files, IOCs, orphans, forbidden extensions, schema version, CTF/lab flags, skills, hunt query_refs, and more)
+1. **`validate.ps1`** — 18 structural checks (kind-aware: tracker, phase files, IOCs, orphans, forbidden extensions, schema version, CTF/lab/hunt depth, skills, hunt query_refs, and more)
 2. **`redact-check.ps1`** — scans for non-VM paths, email addresses, internal hostnames, and raw CTF flag patterns
 
 The job fails and blocks merge on any FAIL-level finding.
@@ -261,7 +261,7 @@ Current versions: **`schema_version: 1`** (legacy file engagements) or **`schema
 
 ### What validate.ps1 checks
 
-Running `validate.ps1` before every commit runs **16 checks**, including: tracker schema,
+Running `validate.ps1` before every commit runs **18 checks**, including: tracker schema,
 `engagement_kind`, per-slot phase files (kind-aware depth), findings frontmatter and
 `schema_version`, IOC CSV schema, orphans, forbidden extensions in the working tree,
 screenshot folders, raw flag/credential patterns, and CTF/lab closure depth. See

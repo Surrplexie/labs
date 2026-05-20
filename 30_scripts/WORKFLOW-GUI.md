@@ -68,7 +68,7 @@ from a single form — no manual file editing for metadata. Key features:
 | **Hunt forms** | Hypothesis, data sources, timebox, detections-found toggle |
 | **Screenshots tab** | Browse images, add captions, auto-number as shot_NNN.png, copy to 50_screenshots/slot/, update SHOT_INDEX.txt |
 | **Update Engagement** | Kind-aware status, frontmatter patch -- load existing values, change what changed |
-| **Tools tab** | One-click Validate, Export, Redact Check, Strip EXIF, Procmon ingest, Event ingest |
+| **Tools tab** | Kind-aware: Validate, Export, Redact, EXIF; **file** = Procmon ingest; **hunt** = event ingest + new hunt query scaffold |
 | **Thumbnail preview** | Installed `pillow` enables preview in Screenshots tab |
 
 It does not replace safe analysis practice, VM isolation, or your own judgment.

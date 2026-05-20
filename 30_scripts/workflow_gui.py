@@ -22,7 +22,7 @@ import subprocess
 import sys
 import tkinter as tk
 from pathlib import Path
-from tkinter import filedialog, messagebox, scrolledtext, ttk
+from tkinter import filedialog, messagebox, scrolledtext, simpledialog, ttk
 
 # PIL is optional -- used for thumbnail preview in Screenshots tab
 try:
@@ -36,7 +36,7 @@ except ImportError:
 # ---------------------------------------------------------------------------
 
 APP_TITLE   = "Workflow HUD -- Labs Engagement Assistant"
-APP_VERSION = "3.0.1"
+APP_VERSION = "3.1.0"
 CONFIG_FILE = Path(__file__).parent / ".workflow_gui_config.json"
 
 VERDICTS     = ["suspicious", "malicious", "benign", "unknown"]
@@ -625,40 +625,60 @@ class WorkflowApp(tk.Tk):
         self._ns["_det_chk"].grid(row=R, column=1, sticky="w", padx=(0, 12), pady=3)
         R += 1
 
-        # ---- Dates ----
+        # ---- Dates (all kinds) ----
         _section_label(frame, "DATES", R); R += 2
         for label, key, default in [
             ("Date started",           "date_acquired", today()),
             ("Date analyzed / closed", "date_analyzed", today()),
-            ("First seen (Bazaar UTC)", "first_seen",   ""),
         ]:
             _lbl(frame, label, R)
             self._ns[key] = tk.StringVar(value=default)
             _entry(frame, self._ns[key], R); R += 1
 
-        # ---- Hashes (file only) ----
-        self._ns["_hash_sep_row"] = R
-        _section_label(frame, "HASHES  (file kind -- paste from MalwareBazaar)", R); R += 2
-        self._ns["_hash_sep_row_content"] = R - 2
+        self._ns["_bazaar_panel"] = ttk.Frame(frame)
+        self._ns["_bazaar_panel"].grid(row=R, column=0, columnspan=3, sticky="ew")
+        self._ns["_bazaar_panel"].columnconfigure(1, weight=1)
+        _lbl(self._ns["_bazaar_panel"], "First seen (Bazaar UTC)", 0)
+        self._ns["first_seen"] = tk.StringVar(value="")
+        _entry(self._ns["_bazaar_panel"], self._ns["first_seen"], 0)
+        R += 1
 
+        # ---- File-only block (hashes, file info, YARA) ----
+        self._ns["_file_panel"] = ttk.Frame(frame)
+        self._ns["_file_panel"].grid(row=R, column=0, columnspan=3, sticky="ew")
+        fp = self._ns["_file_panel"]
+        fp.columnconfigure(1, weight=1)
+        fR = 0
+        _section_label(fp, "HASHES  (file kind -- paste from MalwareBazaar)", fR); fR += 2
         for label, key in [("SHA256", "sha256"), ("SHA1", "sha1"), ("MD5", "md5")]:
-            _lbl(frame, label, R)
+            _lbl(fp, label, fR)
             self._ns[key] = tk.StringVar()
-            _entry(frame, self._ns[key], R); R += 1
+            _entry(fp, self._ns[key], fR); fR += 1
         self._ns["sha256"].trace_add("write", self._on_sha256_change)
 
-        # ---- File info (file only) ----
-        _section_label(frame, "FILE INFO", R); R += 2
+        _section_label(fp, "FILE INFO", fR); fR += 2
         for label, key in [
             ("Filename (claimed)", "filename"),
             ("MIME type",          "mime"),
             ("Size (bytes)",       "size"),
             ("MB URL",             "mb_url"),
         ]:
-            _lbl(frame, label, R)
+            _lbl(fp, label, fR)
             self._ns[key] = tk.StringVar()
-            _entry(frame, self._ns[key], R); R += 1
-        _hint(frame, "MB URL auto-fills when SHA256 is 64 hex chars", R - 1)
+            _entry(fp, self._ns[key], fR); fR += 1
+        _hint(fp, "MB URL auto-fills when SHA256 is 64 hex chars", fR - 1)
+
+        _section_label(fp, "YARA RULES  (file kind -- one pipe row per line)", fR); fR += 2
+        _lbl(fp, "YARA rows", fR)
+        self._ns["yara_txt"] = scrolledtext.ScrolledText(
+            fp, height=3, bg=C_ENTRY, fg=C_FG, insertbackground=C_FG,
+            relief="flat", font=MONO_FONT)
+        self._ns["yara_txt"].grid(row=fR, column=1, columnspan=2,
+                                   sticky="ew", padx=(0, 12), pady=3)
+        self._ns["yara_txt"].insert("end",
+            "| RuleName | Author | What it flags |\n"
+            "| RuleName2 | Author2 | What it flags |")
+        R += 1
 
         # ---- Analysis metadata ----
         _section_label(frame, "ANALYSIS / OUTCOME METADATA", R); R += 2
@@ -718,20 +738,6 @@ class WorkflowApp(tk.Tk):
         self._ns["mitre"]       = tk.StringVar()
         self._ns["_mitre_entry"] = _entry(frame, self._ns["mitre"], R)
         _hint(frame, "comma-separated: T1036, T1027, T1547.001", R)
-        R += 1
-
-        # ---- YARA (file only) ----
-        self._ns["_yara_sep_row"] = R
-        _section_label(frame, "YARA RULES  (file kind -- one pipe row per line)", R); R += 2
-        _lbl(frame, "YARA rows", R)
-        self._ns["yara_txt"] = scrolledtext.ScrolledText(
-            frame, height=3, bg=C_ENTRY, fg=C_FG, insertbackground=C_FG,
-            relief="flat", font=MONO_FONT)
-        self._ns["yara_txt"].grid(row=R, column=1, columnspan=2,
-                                   sticky="ew", padx=(0, 12), pady=3)
-        self._ns["yara_txt"].insert("end",
-            "| RuleName | Author | What it flags |\n"
-            "| RuleName2 | Author2 | What it flags |")
         R += 1
 
         # ---- Action ----
@@ -976,14 +982,28 @@ class WorkflowApp(tk.Tk):
         ttk.Label(outer, text="Run automation scripts from the repo root.",
                   style="Dim.TLabel").pack(padx=14, pady=(12, 4), anchor="w")
 
+        ctx = ttk.Frame(outer)
+        ctx.pack(fill="x", padx=14, pady=(0, 6))
+        ttk.Label(ctx, text="Context sample ID:", style="Dim.TLabel").pack(side="left")
+        self._tools_ctx_sid = tk.StringVar()
+        ttk.Entry(ctx, textvariable=self._tools_ctx_sid, width=14).pack(side="left", padx=(4, 8))
+        ttk.Button(ctx, text="From Screenshots tab",
+                   command=self._tools_use_shot_slot).pack(side="left", padx=(0, 8))
+        ttk.Button(ctx, text="Refresh kind",
+                   command=self._tools_on_ctx_change).pack(side="left")
+        self._tools_kind_lbl = ttk.Label(
+            ctx, text="Kind: (enter sample_XX)", style="Dim.TLabel", font=SMALL_FONT)
+        self._tools_kind_lbl.pack(side="left", padx=(12, 0))
+        self._tools_ctx_sid.trace_add("write", self._tools_on_ctx_change)
+
         tool_frame = ttk.Frame(outer)
         tool_frame.pack(fill="x", padx=14, pady=4)
 
         tools = [
-            ("Validate",                "validate.ps1",       "16 structural / kind-aware integrity checks."),
-            ("Export / Regen INDEX",    "export-summary.ps1", "Rebuild INDEX.md, summary.json, portfolio.json."),
-            ("Redact Check",            "redact-check.ps1",   "Scan for PII and host-machine identity leaks."),
-            ("Strip EXIF",              "strip-exif.ps1",     "Strip metadata from 50_screenshots/ images."),
+            ("Validate",             "validate.ps1",        "18 structural / kind-aware integrity checks."),
+            ("Export / Regen INDEX", "export-summary.ps1",  "Rebuild INDEX.md, summary.json, portfolio.json."),
+            ("Redact Check",         "redact-check.ps1",    "Scan for PII and host-machine identity leaks."),
+            ("Strip EXIF",           "strip-exif.ps1",      "Strip metadata from 50_screenshots/ images."),
         ]
         for label, script, desc in tools:
             rf = ttk.Frame(tool_frame)
@@ -992,36 +1012,13 @@ class WorkflowApp(tk.Tk):
                        command=lambda s=script: self._run_ps_script(s)).pack(side="left")
             ttk.Label(rf, text=desc, style="Dim.TLabel").pack(side="left", padx=12)
 
-        # ---- Procmon ingest ----
-        ttk.Separator(tool_frame, orient="horizontal").pack(fill="x", pady=(8, 4))
-        ttk.Label(tool_frame, text="Procmon ingest  (file kind -- requires Procmon CSV from VM)",
-                  style="Dim.TLabel").pack(anchor="w", pady=(0, 4))
-        pf = ttk.Frame(tool_frame); pf.pack(fill="x", pady=3)
-        ttk.Label(pf, text="Sample ID:", style="Dim.TLabel").pack(side="left")
-        self._procmon_sid = tk.StringVar()
-        ttk.Entry(pf, textvariable=self._procmon_sid, width=12).pack(side="left", padx=(4, 10))
-        ttk.Label(pf, text="Procmon CSV:", style="Dim.TLabel").pack(side="left")
-        self._procmon_csv = tk.StringVar()
-        ttk.Entry(pf, textvariable=self._procmon_csv, width=34).pack(side="left", padx=(4, 6))
-        ttk.Button(pf, text="Browse", command=self._browse_procmon_csv).pack(side="left")
-        pf2 = ttk.Frame(tool_frame); pf2.pack(fill="x", pady=(2, 3))
-        ttk.Label(pf2, text="Process filter:", style="Dim.TLabel").pack(side="left")
-        self._procmon_filter = tk.StringVar()
-        ttk.Entry(pf2, textvariable=self._procmon_filter, width=36).pack(side="left", padx=(4, 10))
-        ttk.Label(pf2, text="e.g. malware.exe,cmd.exe  (blank=all)",
-                  style="Dim.TLabel").pack(side="left")
-        pf3 = ttk.Frame(tool_frame); pf3.pack(fill="x", pady=(0, 6))
-        ttk.Button(pf3, text="  Ingest Procmon  ",
-                   command=self._run_ingest_procmon).pack(side="left")
-        self._procmon_dryrun = tk.BooleanVar()
-        ttk.Checkbutton(pf3, text="Dry run (preview only)",
-                        variable=self._procmon_dryrun).pack(side="left", padx=(12, 0))
-
-        # ---- Event ingest (hunt) ----
-        ttk.Separator(tool_frame, orient="horizontal").pack(fill="x", pady=(8, 4))
-        ttk.Label(tool_frame, text="Event ingest  (hunt kind -- SIEM/Sysmon CSV export)",
-                  style="Dim.TLabel").pack(anchor="w", pady=(0, 4))
-        ef = ttk.Frame(tool_frame); ef.pack(fill="x", pady=3)
+        # ---- Hunt ingest (shown first when kind=hunt) ----
+        self._tools_hunt_frame = ttk.LabelFrame(
+            tool_frame, text="  Threat hunt -- event ingest & query library  ", padding=8)
+        ttk.Label(self._tools_hunt_frame,
+                  text="Parse SIEM/Sysmon CSV into 02_dynamic. Store reusable queries under 45_hunt_queries/.",
+                  style="Dim.TLabel").pack(anchor="w", pady=(0, 6))
+        ef = ttk.Frame(self._tools_hunt_frame); ef.pack(fill="x", pady=3)
         ttk.Label(ef, text="Sample ID:", style="Dim.TLabel").pack(side="left")
         self._events_sid = tk.StringVar()
         ttk.Entry(ef, textvariable=self._events_sid, width=12).pack(side="left", padx=(4, 10))
@@ -1029,19 +1026,59 @@ class WorkflowApp(tk.Tk):
         self._events_csv = tk.StringVar()
         ttk.Entry(ef, textvariable=self._events_csv, width=34).pack(side="left", padx=(4, 6))
         ttk.Button(ef, text="Browse", command=self._browse_events_csv).pack(side="left")
-        ef2 = ttk.Frame(tool_frame); ef2.pack(fill="x", pady=(2, 3))
+        ef2 = ttk.Frame(self._tools_hunt_frame); ef2.pack(fill="x", pady=(2, 3))
         ttk.Label(ef2, text="Host filter:", style="Dim.TLabel").pack(side="left")
         self._events_hostfilter = tk.StringVar()
         ttk.Entry(ef2, textvariable=self._events_hostfilter, width=20).pack(side="left", padx=(4, 10))
         ttk.Label(ef2, text="EventID filter:", style="Dim.TLabel").pack(side="left")
         self._events_eidfilter = tk.StringVar(value="1,3,10,11,13")
         ttk.Entry(ef2, textvariable=self._events_eidfilter, width=16).pack(side="left", padx=(4, 10))
-        ef3 = ttk.Frame(tool_frame); ef3.pack(fill="x", pady=(0, 6))
+        ef3 = ttk.Frame(self._tools_hunt_frame); ef3.pack(fill="x", pady=(0, 4))
         ttk.Button(ef3, text="  Ingest Events  ",
                    command=self._run_ingest_events).pack(side="left")
         self._events_dryrun = tk.BooleanVar()
         ttk.Checkbutton(ef3, text="Dry run",
                         variable=self._events_dryrun).pack(side="left", padx=(12, 0))
+        hf = ttk.Frame(self._tools_hunt_frame); hf.pack(fill="x", pady=(4, 0))
+        ttk.Button(hf, text="  New hunt query (scaffold)  ",
+                   command=self._tools_scaffold_hunt_query).pack(side="left", padx=(0, 8))
+        ttk.Label(hf, text="45_hunt_queries/ -- see README",
+                  style="Dim.TLabel", font=SMALL_FONT).pack(side="left")
+
+        # ---- Procmon ingest (file kind only) ----
+        self._tools_procmon_frame = ttk.LabelFrame(
+            tool_frame, text="  Malware file -- Procmon ingest  ", padding=8)
+        ttk.Label(self._tools_procmon_frame,
+                  text="Requires Procmon CSV from isolated VM. Fills 02_dynamic tables.",
+                  style="Dim.TLabel").pack(anchor="w", pady=(0, 6))
+        pf = ttk.Frame(self._tools_procmon_frame); pf.pack(fill="x", pady=3)
+        ttk.Label(pf, text="Sample ID:", style="Dim.TLabel").pack(side="left")
+        self._procmon_sid = tk.StringVar()
+        ttk.Entry(pf, textvariable=self._procmon_sid, width=12).pack(side="left", padx=(4, 10))
+        ttk.Label(pf, text="Procmon CSV:", style="Dim.TLabel").pack(side="left")
+        self._procmon_csv = tk.StringVar()
+        ttk.Entry(pf, textvariable=self._procmon_csv, width=34).pack(side="left", padx=(4, 6))
+        ttk.Button(pf, text="Browse", command=self._browse_procmon_csv).pack(side="left")
+        pf2 = ttk.Frame(self._tools_procmon_frame); pf2.pack(fill="x", pady=(2, 3))
+        ttk.Label(pf2, text="Process filter:", style="Dim.TLabel").pack(side="left")
+        self._procmon_filter = tk.StringVar()
+        ttk.Entry(pf2, textvariable=self._procmon_filter, width=36).pack(side="left", padx=(4, 10))
+        ttk.Label(pf2, text="e.g. malware.exe,cmd.exe  (blank=all)",
+                  style="Dim.TLabel").pack(side="left")
+        pf3 = ttk.Frame(self._tools_procmon_frame); pf3.pack(fill="x", pady=(0, 0))
+        ttk.Button(pf3, text="  Ingest Procmon  ",
+                   command=self._run_ingest_procmon).pack(side="left")
+        self._procmon_dryrun = tk.BooleanVar()
+        ttk.Checkbutton(pf3, text="Dry run (preview only)",
+                        variable=self._procmon_dryrun).pack(side="left", padx=(12, 0))
+
+        self._tools_kind_note = ttk.Label(
+            tool_frame,
+            text="CTF/lab: use New/Update Engagement tabs. No Procmon or event ingest here.",
+            style="Dim.TLabel", font=SMALL_FONT)
+        self._tools_kind_note.pack(anchor="w", pady=(6, 0))
+
+        self._tools_apply_kind_visibility("file")
 
         ttk.Separator(outer, orient="horizontal").pack(fill="x", padx=14, pady=8)
         self._tools_out = scrolledtext.ScrolledText(
@@ -1114,20 +1151,25 @@ class WorkflowApp(tk.Tk):
         def show(w_key): self._show_ns(w_key, True)
         def hide(w_key): self._show_ns(w_key, False)
 
-        # File-only rows
+        # File-only panel (hashes, file info, YARA) and Bazaar date row
+        for panel_key in ("_file_panel", "_bazaar_panel"):
+            panel = self._ns.get(panel_key)
+            if panel is not None:
+                try:
+                    if is_file:
+                        panel.grid()
+                    else:
+                        panel.grid_remove()
+                except Exception:
+                    pass
+
         for k in ("_type_lbl", "_type_combo", "_type_hint",
-                  "_hash_sep_row",  # separator widget row  -- handled via grid_remove on parent rows
-                  "sha256", "sha1", "md5",
-                  "filename", "mime", "size", "mb_url",
                   "_verdict_lbl", "_verdict_combo",
                   "_conf_lbl", "_conf_combo",
                   "_fam_lbl", "_fam_entry",
                   "_flags_lbl", "_flags_frame",
-                  "yara_txt", "_yara_sep_row",
-                  "_mitre_lbl", "_mitre_entry",
                   ):
-            _vis = is_file
-            self._show_ns(k, _vis)
+            self._show_ns(k, is_file)
 
         # CTF fields
         for k in ("_plat_lbl", "_plat_combo",
@@ -1607,6 +1649,9 @@ class WorkflowApp(tk.Tk):
         kind = get_kind_for_slot(self.repo_root, sid)
         self._up["kind_lbl"].configure(text=kind)
         self._up_set_kind(kind)
+        if hasattr(self, "_tools_ctx_sid"):
+            self._tools_ctx_sid.set(sid)
+            self._tools_on_ctx_change()
 
     def _up_set_kind(self, kind: str):
         statuses = KIND_STATUSES.get(kind, KIND_STATUSES["file"])
@@ -1730,6 +1775,60 @@ class WorkflowApp(tk.Tk):
     # Tools handlers
     # -----------------------------------------------------------------------
 
+    def _tools_on_ctx_change(self, *_):
+        sid = self._tools_ctx_sid.get().strip() if hasattr(self, "_tools_ctx_sid") else ""
+        kind = "file"
+        if sid and self.repo_root and re.fullmatch(r"sample_\d{2}", sid):
+            kind = get_kind_for_slot(self.repo_root, sid)
+            self._procmon_sid.set(sid)
+            self._events_sid.set(sid)
+        elif sid:
+            kind = "(invalid id)"
+        self._tools_kind_lbl.configure(
+            text=f"Kind: {kind}" + (f"  ({sid})" if sid else ""))
+        if isinstance(kind, str) and kind not in ("(invalid id)", ""):
+            self._tools_apply_kind_visibility(kind)
+
+    def _tools_use_shot_slot(self):
+        slot = self._shot_slot_var.get().strip() if hasattr(self, "_shot_slot_var") else ""
+        if slot:
+            self._tools_ctx_sid.set(slot)
+            self._tools_on_ctx_change()
+
+    def _tools_apply_kind_visibility(self, kind: str) -> None:
+        """Show kind-relevant ingest panels on the Tools tab."""
+        for frame in (self._tools_hunt_frame, self._tools_procmon_frame, self._tools_kind_note):
+            frame.pack_forget()
+
+        if kind == "hunt":
+            self._tools_hunt_frame.pack(fill="x", pady=(10, 4))
+            self._tools_kind_note.configure(
+                text="Hunt mode: event ingest + 45_hunt_queries/ library.")
+        elif kind == "file":
+            self._tools_procmon_frame.pack(fill="x", pady=(10, 4))
+            self._tools_kind_note.configure(
+                text="File mode: Procmon ingest only (malware dynamic triage).")
+        else:
+            self._tools_kind_note.configure(
+                text="CTF/lab: use New/Update Engagement tabs. No Procmon or event ingest here.")
+        self._tools_kind_note.pack(anchor="w", pady=(6, 0))
+
+    def _tools_scaffold_hunt_query(self):
+        if not self.repo_root:
+            messagebox.showerror("No repo", "Browse to repo root first.")
+            return
+        qid = simpledialog.askstring(
+            "New hunt query",
+            "Query ID (kebab-case, e.g. schtasks-persistence):",
+            parent=self)
+        if not qid or not re.fullmatch(r"[a-z0-9]+(-[a-z0-9]+)*", qid.strip()):
+            messagebox.showerror("Invalid", "Use kebab-case letters and numbers only.")
+            return
+        title = simpledialog.askstring(
+            "New hunt query", "Short title:", parent=self) or qid
+        extra = ["-QueryId", qid.strip(), "-Title", title.strip(), "-Platform", "kql"]
+        self._run_ps_script("new_hunt_query.ps1", extra_args=extra)
+
     def _run_ps_script(self, script: str, extra_args: list = None):
         if not self.repo_root:
             messagebox.showerror("No repo", "Browse to repo root first."); return
@@ -1770,6 +1869,11 @@ class WorkflowApp(tk.Tk):
         sid      = self._procmon_sid.get().strip()
         csv_path = self._procmon_csv.get().strip()
         if not sid:      messagebox.showerror("Missing", "Enter a Sample ID."); return
+        if get_kind_for_slot(self.repo_root, sid) != "file":
+            messagebox.showwarning(
+                "Wrong kind",
+                f"{sid} is not a file engagement. Procmon ingest is for malware (file) slots only.")
+            return
         if not csv_path: messagebox.showerror("Missing", "Browse to Procmon CSV."); return
         extra = ["-SampleId", sid, "-ProcmonCsv", csv_path, "-Root", str(self.repo_root)]
         if self._procmon_filter.get().strip():
@@ -1790,6 +1894,11 @@ class WorkflowApp(tk.Tk):
         sid      = self._events_sid.get().strip()
         csv_path = self._events_csv.get().strip()
         if not sid:      messagebox.showerror("Missing", "Enter a Sample ID."); return
+        if get_kind_for_slot(self.repo_root, sid) != "hunt":
+            messagebox.showwarning(
+                "Wrong kind",
+                f"{sid} is not a hunt engagement. Event ingest is for hunt slots only.")
+            return
         if not csv_path: messagebox.showerror("Missing", "Browse to Event CSV."); return
         extra = ["-SampleId", sid, "-EventCsv", csv_path, "-Root", str(self.repo_root)]
         hf = self._events_hostfilter.get().strip()
