@@ -48,8 +48,10 @@ what you found and how confident you are.
 
 ## Tips on the YAML frontmatter
 
-- `schema_version: 1` must always be present and must equal `1`; `validate.ps1` check 11
-  enforces this.
+- `schema_version` is required; `validate.ps1` check 11 enforces it:
+  - **`file`:** `1` or `2` (legacy file engagements may stay on `1`).
+  - **`ctf`, `lab`, `hunt`:** must be **`2`** (emitted by `new_engagement.ps1 -Kind …`).
+- `engagement_kind` in frontmatter should match `samples_tracker.csv`.
 - `verdict` must be one of: `benign`, `suspicious`, `malicious`, `unknown`.
 - `family_confidence` must be one of: `high`, `medium-high`, `medium`, `low`.
 - `tags` and `mitre_techniques` are arrays; add as many entries as evidence supports —

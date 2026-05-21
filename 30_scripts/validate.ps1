@@ -25,6 +25,7 @@
      16.  Hunt query_refs            - warns if hunt references missing 45_hunt_queries files.
      17.  Lab completion depth       - warns if reviewed lab has thin step log or empty objectives.
      18.  Hunt collection depth      - warns if closed hunt has thin 01_static / no query evidence.
+     19.  04_writeups kind match     - warns if optional 04 frontmatter engagement_kind != tracker.
 
     Exit code 0 = all checks passed (WARNs allowed).
     Exit code 1 = one or more FAIL checks.
@@ -325,7 +326,13 @@ foreach ($row in $nonEmptyRows) {
         Write-Warn "$id : schema_version is '$sv', expected 1 or 2"
         $schemaIssues = $true
     } else {
-        Write-Pass "$id : schema_version: $sv (kind: $(if ($fmKind) { $fmKind } else { 'file/legacy' }))"
+        $kind = Get-EngagementKind -Row $row -Content $raw
+        if ($kind -in @('ctf', 'lab', 'hunt') -and $sv -ne '2') {
+            Write-Warn "$id : $kind engagement should use schema_version: 2 (found '$sv'); re-scaffold or edit 03_findings"
+            $schemaIssues = $true
+        } else {
+            Write-Pass "$id : schema_version: $sv (kind: $kind)"
+        }
     }
 }
 if (-not $schemaIssues -and $nonEmptyRows.Count -gt 0) {
@@ -606,6 +613,47 @@ if ($closedHuntRows.Count -eq 0) {
     if (-not $huntDepthIssues) {
         Write-Pass "All closed hunt engagements have adequate collection depth"
     }
+}
+
+# ---------------------------------------------------------------------------
+# CHECK 19: 04_writeups engagement_kind vs tracker (optional file only)
+# ---------------------------------------------------------------------------
+Write-Section "19. 04_writeups engagement_kind consistency"
+
+$writeupKindIssues = $false
+$writeupChecked    = 0
+
+foreach ($row in $nonEmptyRows) {
+    $id          = $row.sample_id.Trim()
+    $writeupPath = Join-Path $Root "04_writeups\$id.md"
+    if (-not (Test-Path $writeupPath)) { continue }
+
+    $writeupChecked++
+    $trackerKind = Get-EngagementKind -Row $row -Content $null
+    $wuRaw       = Get-Content $writeupPath -Raw -Encoding UTF8 -ErrorAction SilentlyContinue
+
+    if (-not (Has-Frontmatter -Content $wuRaw)) {
+        Write-Warn "$id : 04_writeups\$id.md has no YAML frontmatter -- run scaffold_writeup.ps1 -Kind $trackerKind -Overwrite"
+        $writeupKindIssues = $true
+        continue
+    }
+
+    $wuKind = Get-FrontmatterValue -Content $wuRaw -Key 'engagement_kind'
+    if ([string]::IsNullOrWhiteSpace($wuKind)) {
+        Write-Warn "$id : 04_writeups missing engagement_kind (tracker: $trackerKind)"
+        $writeupKindIssues = $true
+    } elseif ($wuKind.Trim().ToLower() -ne $trackerKind) {
+        Write-Warn "$id : 04_writeups engagement_kind '$wuKind' != tracker '$trackerKind'"
+        $writeupKindIssues = $true
+    } else {
+        Write-Pass "$id : 04_writeups kind matches tracker ($trackerKind)"
+    }
+}
+
+if ($writeupChecked -eq 0) {
+    Write-Info "No 04_writeups files for active engagements (optional layer)."
+} elseif (-not $writeupKindIssues) {
+    Write-Pass "All 04_writeups files match tracker engagement_kind"
 }
 
 # ---------------------------------------------------------------------------

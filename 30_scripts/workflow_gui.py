@@ -35,7 +35,7 @@ except ImportError:
 # ---------------------------------------------------------------------------
 
 APP_TITLE   = "Workflow HUD -- Labs Engagement Assistant"
-APP_VERSION = "3.1.0"
+APP_VERSION = "3.1.1"
 CONFIG_FILE = Path(__file__).parent / ".workflow_gui_config.json"
 
 VERDICTS     = ["suspicious", "malicious", "benign", "unknown"]
@@ -1023,7 +1023,7 @@ class WorkflowApp(tk.Tk):
         tool_frame.pack(fill="x", padx=14, pady=4)
 
         tools = [
-            ("Validate",             "validate.ps1",        "18 structural / kind-aware integrity checks."),
+            ("Validate",             "validate.ps1",        "19 structural / kind-aware integrity checks."),
             ("Export / Regen INDEX", "export-summary.ps1",  "Rebuild INDEX.md, summary.json, portfolio.json."),
             ("Redact Check",         "redact-check.ps1",    "Scan for PII and host-machine identity leaks."),
             ("Strip EXIF",           "strip-exif.ps1",      "Strip metadata from 50_screenshots/ images."),

@@ -7,6 +7,17 @@ Tracks breaking and non-breaking changes to the two machine-readable contracts:
 
 ---
 
+## 2026-05-20 -- validate + build (no schema bump)
+
+- **`validate.ps1` check 19** -- when `04_writeups/sample_XX.md` exists for an active slot,
+  WARN if YAML `engagement_kind` is missing or differs from the tracker.
+- **Check 11 tightened** -- `ctf` / `lab` / `hunt` active findings must use `schema_version: 2`.
+- **`build_exe.ps1 -Clean`**, **`build_linux.sh --clean`** -- remove `dist/_build_tmp` and
+  `dist/_spec` after a successful build.
+- **`workflow_gui` `APP_VERSION` 3.1.1** -- release tag `v3.1.1` when publishing binary.
+
+---
+
 ## Version 1 (current) -- 2026-05-11
 
 **Initial schema.** Both contracts defined at version 1.

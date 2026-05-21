@@ -22,12 +22,12 @@ All scripts require PowerShell 5.1+ and run from anywhere (they resolve the repo
 | `install-hooks.ps1` | Install pre-push git hook (Windows) | Once, after cloning |
 | `install-hooks.sh` | Install pre-push git hook (Linux) | Once, after cloning |
 | `close_sample.ps1` | Advance slot status, print kind-specific close checklist | After each analysis phase |
-| `validate.ps1` | Structural integrity check (18 checks, kind-aware) | Before any commit |
+| `validate.ps1` | Structural integrity check (19 checks, kind-aware) | Before any commit |
 | `export-summary.ps1` | Regenerate `INDEX.md` + `dist/summary.json` + `dist/portfolio.json` | After closing an engagement or editing frontmatter |
 | `redact-check.ps1` | Scan for PII / non-VM paths in .md files | Before any commit |
 | `strip-exif.ps1` | Strip EXIF metadata from screenshot images | Before committing new screenshots |
-| `build_exe.ps1` | Build `dist/workflow_gui.exe` (pinned PyInstaller + SHA256SUMS) | Before a release; local testing |
-| `build_linux.sh` | Build `dist/workflow_gui` (Linux) | Local testing on Linux |
+| `build_exe.ps1` | Build `dist/workflow_gui.exe` (pinned PyInstaller + SHA256SUMS; optional `-Clean`) | Before a release; local testing |
+| `build_linux.sh` | Build `dist/workflow_gui` (Linux; optional `--clean`) | Local testing on Linux |
 | `tag_release.ps1` | Preflight + annotated `vX.Y.Z` tag for GitHub Release | When `workflow_gui` warrants a new binary |
 
 Release policy: [`../RELEASE-TAGGING.md`](../RELEASE-TAGGING.md).
@@ -311,9 +311,11 @@ powershell -ExecutionPolicy Bypass -File .\30_scripts\validate.ps1 -FailOnWarn
 1. Tracker CSV schema · 2. Phase files per slot · 3. SHA256 (`file`) · 4. Content depth
 5. Findings frontmatter · 6. SHA256 cross-check (`file`) · 7. IOC CSV schema
 8. Orphan files · 9. Forbidden extensions · 10. Screenshot folders
-11. `schema_version` · 12. Secret/flag scan · 13. `engagement_kind` presence
+11. `schema_version` (ctf/lab/hunt require `2`) · 12. Secret/flag scan · 13. `engagement_kind` presence
 14. CTF solve depth · 15. Skills on closed non-file engagements
 16. Hunt `query_refs` → `45_hunt_queries/` · 17. Lab completion depth · 18. Hunt collection depth
+19. Optional `04_writeups` `engagement_kind` vs tracker
+19. Optional `04_writeups` `engagement_kind` vs tracker
 
 ---
 
@@ -468,7 +470,7 @@ Versioned JSON Schema contracts for two machine-readable formats:
 
 - `file` kind findings use `schema_version: 1` or `2`.
 - `ctf`, `lab`, `hunt` kind findings use `schema_version: 2`.
-- `validate.ps1` check 11 enforces presence (accepts 1 or 2).
+- `validate.ps1` check 11: `file` may use `1` or `2`; `ctf`/`lab`/`hunt` must use `2`. Check 19: optional `04_writeups` kind vs tracker.
 - `export-summary.ps1` wraps `dist/summary.json` in a `schema_version: 2` envelope.
 - See `schema/CHANGELOG.md` for migration notes.
 

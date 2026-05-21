@@ -23,16 +23,21 @@
 
 .PARAMETER SkipPipInstall
     Skip the pip install step (use only if the exact pinned version is already
-    installed and you do not want pip to run).
+    installed and you do not want pip to run.
+
+.PARAMETER Clean
+    After a successful build, remove dist/_build_tmp and dist/_spec (keeps .exe and SHA256SUMS.txt).
 
 .EXAMPLE
     powershell -ExecutionPolicy Bypass -File .\30_scripts\build_exe.ps1
     powershell -ExecutionPolicy Bypass -File .\30_scripts\build_exe.ps1 -Python python3.12
     powershell -ExecutionPolicy Bypass -File .\30_scripts\build_exe.ps1 -SkipPipInstall
+    powershell -ExecutionPolicy Bypass -File .\30_scripts\build_exe.ps1 -SkipPipInstall -Clean
 #>
 param(
     [string]$Python        = 'python',
-    [switch]$SkipPipInstall
+    [switch]$SkipPipInstall,
+    [switch]$Clean
 )
 
 $ErrorActionPreference = 'Stop'
@@ -186,6 +191,15 @@ $exeHash  workflow_gui.exe
     Write-Host "Usage:"
     Write-Host "  dist\workflow_gui.exe"
     Write-Host "  dist\workflow_gui.exe --repo C:\path\to\labs"
+
+    if ($Clean) {
+        foreach ($dir in @($BuildTmp, $SpecDir)) {
+            if (Test-Path $dir) {
+                Remove-Item -Path $dir -Recurse -Force -ErrorAction SilentlyContinue
+                Write-Host "  Removed: $dir" -ForegroundColor DarkGray
+            }
+        }
+    }
 } else {
     Write-Host "Output file not found after build -- check PyInstaller output above." -ForegroundColor Red
     exit 1

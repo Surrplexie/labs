@@ -61,7 +61,11 @@ Pre-seeded `sample_01`–`sample_50` files use the **file** malware outline. For
 - Hunt: confirmed IOCs may go in `40_iocs` **and** the writeup.
 - Run [`redact-check.ps1`](../30_scripts/redact-check.ps1) before commit.
 
-Files here are **not** part of the four-phase integrity check.
+Files here are **not** part of the four-phase integrity check. If a writeup exists for an
+active slot, `validate.ps1` **check 19** warns when frontmatter `engagement_kind` does not
+match `samples_tracker.csv`. When a writeup exists,
+`validate.ps1` **check 19** warns if frontmatter `engagement_kind` does not match
+`samples_tracker.csv`.
 
 ---
 

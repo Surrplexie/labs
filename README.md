@@ -171,7 +171,7 @@ labs/
 |   |-- new_engagement.ps1       <- Scaffold slot (file / ctf / lab / hunt)
 |   |-- new_sample.ps1           <- Alias for new_engagement.ps1 -Kind file
 |   |-- close_sample.ps1         <- Advance status, print close checklist
-|   |-- validate.ps1             <- Structural integrity (18 checks, kind-aware)
+|   |-- validate.ps1             <- Structural integrity (19 checks, kind-aware)
 |   |-- export-summary.ps1       <- Regenerate INDEX.md + dist/summary.json
 |   |-- redact-check.ps1         <- Scan for PII / non-VM paths before committing
 |   |-- strip-exif.ps1           <- Strip EXIF metadata from screenshots
@@ -229,7 +229,7 @@ See [`30_scripts/README.md`](./30_scripts/README.md) for full documentation and 
 
 Every push and pull request runs `.github/workflows/integrity.yml` on GitHub Actions, which executes three checks automatically:
 
-1. **`validate.ps1`** — 18 structural checks (kind-aware: tracker, phase files, IOCs, orphans, forbidden extensions, schema version, CTF/lab/hunt depth, skills, hunt query_refs, and more)
+1. **`validate.ps1`** — 19 structural checks (kind-aware: tracker, phase files, IOCs, orphans, forbidden extensions, schema version, CTF/lab/hunt depth, skills, hunt query_refs, optional `04_writeups` kind match, and more)
 2. **`redact-check.ps1`** — scans for non-VM paths, email addresses, internal hostnames, and raw CTF flag patterns
 
 The job fails and blocks merge on any FAIL-level finding.
@@ -269,20 +269,20 @@ Current versions: **`schema_version: 1`** (legacy file engagements) or **`schema
 | `ingest-procmon.ps1` | Parse Procmon CSV from VM — write Markdown tables and IOC candidates into `02_dynamic` |
 | `ingest-events.ps1` | Parse SIEM/Sysmon event export — timeline and IOC candidates for hunt engagements |
 | `close_sample.ps1` | Advance a slot's lifecycle status and print a phase-specific close checklist |
-| `validate.ps1` | Run 18 kind-aware structural checks; exits 1 if any FAIL |
+| `validate.ps1` | Run 19 kind-aware structural checks; exits 1 if any FAIL |
 | `tag_release.ps1` | Preflight validate/redact, then create annotated `vX.Y.Z` tag for GitHub Release |
 | `export-summary.ps1` | Parse YAML frontmatter, regenerate `INDEX.md` and `dist/summary.json` |
 | `redact-check.ps1` | Scan all `.md`/`.csv`/`.txt` files for non-VM paths, emails, internal hostnames |
 | `strip-exif.ps1` | Strip EXIF metadata from all images in `50_screenshots/` |
-| `build_exe.ps1` | Compile `workflow_gui.py` to `.exe` with pinned PyInstaller; outputs `SHA256SUMS.txt` |
-| `build_linux.sh` | Compile `workflow_gui.py` to Linux binary with pinned PyInstaller; outputs `SHA256SUMS.txt` |
+| `build_exe.ps1` | Compile `workflow_gui.py` to `.exe` with pinned PyInstaller; outputs `SHA256SUMS.txt`; optional `-Clean` |
+| `build_linux.sh` | Compile `workflow_gui.py` to Linux binary with pinned PyInstaller; outputs `SHA256SUMS.txt`; optional `--clean` |
 | `build_requirements.txt` | Pinned PyInstaller version (read by build scripts and CI; sole pin to edit) |
 | `install-hooks.ps1` | Install the pre-push Git hook on Windows |
 | `install-hooks.sh` | Install the pre-push Git hook on Linux |
 
 ### What validate.ps1 checks
 
-Running `validate.ps1` before every commit runs **18 checks**, including: tracker schema,
+Running `validate.ps1` before every commit runs **19 checks**, including: tracker schema,
 `engagement_kind`, per-slot phase files (kind-aware depth), findings frontmatter and
 `schema_version`, IOC CSV schema, orphans, forbidden extensions in the working tree,
 screenshot folders, raw flag/credential patterns, and CTF/lab closure depth. See
@@ -326,12 +326,14 @@ python3 30_scripts/workflow_gui.py --repo /path/to/labs
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\30_scripts\build_exe.ps1
+powershell -ExecutionPolicy Bypass -File .\30_scripts\build_exe.ps1 -SkipPipInstall -Clean
 ```
 
 **Linux** — produces `dist/workflow_gui` (~25–45 MB, no Python required):
 
 ```bash
 bash ./30_scripts/build_linux.sh
+bash ./30_scripts/build_linux.sh --skip-pip-install --clean
 ```
 
 Both build scripts now use a **pinned PyInstaller version** from

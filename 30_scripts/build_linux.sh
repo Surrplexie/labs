@@ -13,6 +13,7 @@
 #   bash ./30_scripts/build_linux.sh
 #   bash ./30_scripts/build_linux.sh --python python3.12
 #   bash ./30_scripts/build_linux.sh --skip-pip-install
+#   bash ./30_scripts/build_linux.sh --skip-pip-install --clean
 #
 # Requirements:
 #   - Python 3.10+ with tkinter support
@@ -25,11 +26,13 @@ set -e
 
 PYTHON="python3"
 SKIP_PIP=false
+CLEAN_BUILD=false
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --python)           PYTHON="$2"; shift 2 ;;
         --skip-pip-install) SKIP_PIP=true; shift ;;
+        --clean)            CLEAN_BUILD=true; shift ;;
         *) echo "Unknown arg: $1"; exit 1 ;;
     esac
 done
@@ -150,6 +153,15 @@ EOF
     echo "  ./dist/workflow_gui"
     echo "  ./dist/workflow_gui --repo /path/to/labs"
     chmod +x "$OUTPUT"
+
+    if [ "$CLEAN_BUILD" = true ]; then
+        for dir in "$BUILD_TMP" "$SPEC_DIR"; do
+            if [ -d "$dir" ]; then
+                rm -rf "$dir"
+                echo "  Removed: $dir"
+            fi
+        done
+    fi
 else
     echo "Output file not found after build -- check PyInstaller output above."
     exit 1

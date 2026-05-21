@@ -1,5 +1,7 @@
 Dev logs rules; REM-1, REM-2 any of these terms are the new 'updates' like "Update 1", all major logs entered here. Note; REM-1.2, REM-1.4 etc. are only for GitHub commits and pushing, never named here.
 
+**Session arc (2026-05-18 → 2026-05-20):** Tiers 2–5 → **REM-6** tracker/INDEX/GUI bands → **REM-7** validate 19 + schema v2 + build `-Clean` + `v3.1.1`.
+
 ---
 
 ## REM-1
@@ -337,27 +339,73 @@ powershell -ExecutionPolicy Bypass -File .\30_scripts\validate.ps1
 
 ## REM-7
 
+**When:** 2026-05-20
+
+**What:** **Schema / validate (tier 3)** + **build / release (tier 4)** — enforce `schema_version: 2` for non-file findings, optional `04` kind check, build cleanup flags, bump GUI to **3.1.1**.
+
+### Part A — Schema and validate
+
+| Change | Detail |
+|--------|--------|
+| **Check 11 (tightened)** | Active `ctf` / `lab` / `hunt` rows must have `schema_version: 2` in `03_findings` (WARN). `file` may use `1` or `2`. |
+| **Check 19 (new)** | If `04_writeups/sample_XX.md` exists for an active slot: WARN when no YAML frontmatter, missing `engagement_kind`, or kind ≠ tracker. Skips slots with no `04` file. |
+| **`new_engagement.ps1`** | Already emits `schema_version: 2` for ctf/lab/hunt templates (no change this REM). |
+| **Docs** | `03_findings/README.md`, `04_writeups/README.md`, `30_scripts/schema/CHANGELOG.md` |
+
+**Validate count:** **19 checks** (was 18).
+
+### Part B — Build / release
+
+| Change | Detail |
+|--------|--------|
+| **`build_exe.ps1 -Clean`** | After success, deletes `dist/_build_tmp` and `dist/_spec`. |
+| **`build_linux.sh --clean`** | Same behavior on Linux. |
+| **`APP_VERSION`** | `3.1.1` in `workflow_gui.py` (patch: validate 19, `-Clean`, REM-6 GUI UX already in tree). |
+| **Release tag** | Intended tag: **`v3.1.1`** per [`RELEASE-TAGGING.md`](../RELEASE-TAGGING.md) — run `tag_release.ps1` when ready to publish binary (not pushed from this log). |
+
+### Commands
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\30_scripts\validate.ps1
+powershell -ExecutionPolicy Bypass -File .\30_scripts\build_exe.ps1 -SkipPipInstall -Clean
+# When ready to ship:
+powershell -ExecutionPolicy Bypass -File .\30_scripts\tag_release.ps1 -Tag v3.1.1
+```
+
+### Files touched (REM-7)
+
+| File | Change |
+|------|--------|
+| `30_scripts/validate.ps1` | Checks 11 + 19 |
+| `30_scripts/build_exe.ps1`, `build_linux.sh` | `-Clean` / `--clean` |
+| `30_scripts/workflow_gui.py` | `APP_VERSION` 3.1.1, validate blurb 19 checks |
+| `README.md`, `30_scripts/README.md`, `.github/workflows/integrity.yml` | 19-check docs |
+| `03_findings/README.md`, `04_writeups/README.md`, `schema/CHANGELOG.md` | Schema / validate notes |
+
+---
+
+## REM-8
+
 **When:** —
 
 **What:** *Reserved — next remediation entry.*
 
-### Open follow-ups (carry-forward)
+### Open follow-ups
 
 | Item | Status |
 |------|--------|
-| **`build_linux.sh` parity** with `build_exe.ps1` (UTC, tkinter, pin from `build_requirements.txt`) | **Done in tree** (REM-1 review; no REM-6 code change) |
-| **`build_exe.ps1 -Clean`** | Not implemented |
-| **CI smoke** of `workflow_gui` on PRs | Deferred |
-| **Tag `v3.1.0`** (or patch) for GitHub Release after GUI changes | User action when ready — [`RELEASE-TAGGING.md`](../RELEASE-TAGGING.md) |
+| **CI smoke** of `workflow_gui` import on PRs | Deferred |
+| **GitHub Release `v3.1.1`** | Run `tag_release.ps1 -Tag v3.1.1 -Push` when ready |
 
-### Quick reference — files touched across REM-2–6
+### Quick reference — files touched across REM-2–7
 
 | Area | Key paths |
 |------|-----------|
 | Writeups | `04_writeups/_templates/*`, `30_scripts/scaffold_writeup.ps1` |
 | Hunt queries | `45_hunt_queries/`, `30_scripts/new_hunt_query.ps1` |
 | Notes | `20_notes/ctf-machine-index.md`, `lab-curriculum-map.md`, `detection-catalog.md`, `ctf-patterns/` |
-| GUI | `30_scripts/workflow_gui.py` (v3.1.0; REM-6 long-writeup + band UX) |
+| GUI | `30_scripts/workflow_gui.py` (v3.1.1) |
 | Tracker / index | `samples_tracker.csv`, `INDEX.md` (REM-6) |
-| Validate | `30_scripts/validate.ps1` (checks 16–18) |
+| Validate | `30_scripts/validate.ps1` (checks 16–19) |
+| Build | `build_exe.ps1`, `build_linux.sh` (`-Clean`) |
 | Identity docs | `README.md`, `ENGAGEMENTS.md`, `WORKFLOW.md`, `30_scripts/README.md`, `WORKFLOW-GUI.md` |
