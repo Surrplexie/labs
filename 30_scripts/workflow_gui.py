@@ -8,6 +8,7 @@ Paste values once; phase files are filled automatically (v3.1+: kind-specific UI
 Usage:
     python workflow_gui.py
     python workflow_gui.py --repo "C:/path/to/labs"
+    python workflow_gui.py --smoke-test   # CI/headless: imports OK, exit 0 (no GUI)
 """
 
 import argparse
@@ -35,7 +36,7 @@ except ImportError:
 # ---------------------------------------------------------------------------
 
 APP_TITLE   = "Workflow HUD -- Labs Engagement Assistant"
-APP_VERSION = "3.1.1"
+APP_VERSION = "3.1.2"
 CONFIG_FILE = Path(__file__).parent / ".workflow_gui_config.json"
 
 VERDICTS     = ["suspicious", "malicious", "benign", "unknown"]
@@ -2026,7 +2027,15 @@ def main():
     parser = argparse.ArgumentParser(description=APP_TITLE)
     parser.add_argument("--repo", metavar="PATH",
                         help="Path to labs repo root (overrides auto-detect)")
+    parser.add_argument(
+        "--smoke-test",
+        action="store_true",
+        help="Validate imports and exit (no GUI); for CI and smoke_gui.ps1",
+    )
     args = parser.parse_args()
+    if args.smoke_test:
+        print(f"{APP_TITLE} v{APP_VERSION} smoke OK (tkinter={tk.TkVersion})")
+        return
     app = WorkflowApp(cli_repo=args.repo)
     app.mainloop()
 

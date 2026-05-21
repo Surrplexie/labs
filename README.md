@@ -227,10 +227,12 @@ See [`30_scripts/README.md`](./30_scripts/README.md) for full documentation and 
 
 ### Continuous integrity (CI)
 
-Every push and pull request runs `.github/workflows/integrity.yml` on GitHub Actions, which executes three checks automatically:
+Every push and pull request runs `.github/workflows/integrity.yml` on GitHub Actions:
 
-1. **`validate.ps1`** — 19 structural checks (kind-aware: tracker, phase files, IOCs, orphans, forbidden extensions, schema version, CTF/lab/hunt depth, skills, hunt query_refs, optional `04_writeups` kind match, and more)
-2. **`redact-check.ps1`** — scans for non-VM paths, email addresses, internal hostnames, and raw CTF flag patterns
+1. **`validate.ps1`** — 19 structural checks (kind-aware)
+2. **`redact-check.ps1`** — PII / flag pattern scan
+3. **`smoke_gui.ps1`** (Windows) — `py_compile`, tkinter, `workflow_gui.py --smoke-test`
+4. **`py_compile`** (Linux) — syntax check for `workflow_gui.py` on `ubuntu-latest`
 
 The job fails and blocks merge on any FAIL-level finding.
 

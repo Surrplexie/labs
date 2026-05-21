@@ -29,6 +29,7 @@ All scripts require PowerShell 5.1+ and run from anywhere (they resolve the repo
 | `build_exe.ps1` | Build `dist/workflow_gui.exe` (pinned PyInstaller + SHA256SUMS; optional `-Clean`) | Before a release; local testing |
 | `build_linux.sh` | Build `dist/workflow_gui` (Linux; optional `--clean`) | Local testing on Linux |
 | `tag_release.ps1` | Preflight + annotated `vX.Y.Z` tag for GitHub Release | When `workflow_gui` warrants a new binary |
+| `smoke_gui.ps1` | Headless GUI smoke (`--smoke-test`, tkinter, PyPI pin warn) | CI; optional before release |
 
 Release policy: [`../RELEASE-TAGGING.md`](../RELEASE-TAGGING.md).
 

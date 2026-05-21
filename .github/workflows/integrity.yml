@@ -101,3 +101,34 @@ jobs:
           }
 
           if ($fail) { exit 1 } else { exit 0 }
+
+  gui-smoke:
+    name: GUI smoke test (workflow_gui)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Smoke test (smoke_gui.ps1)
+        shell: pwsh
+        run: |
+          & powershell -ExecutionPolicy Bypass `
+            -File "${{ github.workspace }}\30_scripts\smoke_gui.ps1" `
+            -Python python
+          exit $LASTEXITCODE
+
+  gui-smoke-linux:
+    name: GUI syntax check (Linux)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: py_compile workflow_gui.py
+        run: python -m py_compile 30_scripts/workflow_gui.py

@@ -1,6 +1,6 @@
 Dev logs rules; REM-1, REM-2 any of these terms are the new 'updates' like "Update 1", all major logs entered here. Note; REM-1.2, REM-1.4 etc. are only for GitHub commits and pushing, never named here.
 
-**Session arc (2026-05-18 → 2026-05-20):** Tiers 2–5 → **REM-6** tracker/INDEX/GUI bands → **REM-7** validate 19 + schema v2 + build `-Clean` + `v3.1.1`.
+**Session arc (2026-05-18 → 2026-05-20):** Tiers 2–5 → **REM-6**–**REM-7** → **REM-8** deferred tier (smoke CI, optional sign, `DEFERRED.md`).
 
 ---
 
@@ -386,6 +386,51 @@ powershell -ExecutionPolicy Bypass -File .\30_scripts\tag_release.ps1 -Tag v3.1.
 
 ## REM-8
 
+**When:** 2026-05-20
+
+**What:** Closed plan tier **“5. Still defer”** — implement what fits; document what stays out of scope.
+
+### Implemented
+
+| Item | Detail |
+|------|--------|
+| **PyInstaller bump** | **No bump** — `6.20.0` still PyPI latest. `smoke_gui.ps1` queries PyPI and **warns** on drift (`-StrictPin` fails). |
+| **PR / CI smoke** | `workflow_gui.py --smoke-test`; `30_scripts/smoke_gui.ps1`; `integrity.yml` jobs **gui-smoke** (Windows) + **gui-smoke-linux** (`py_compile`). |
+| **Code-signing** | Optional `build_exe.ps1 -SignThumbprint` + env `WORKFLOW_GUI_SIGN_THUMBPRINT`; `RELEASE-VERIFICATION.md` section. |
+
+### Permanently deferred (documented)
+
+See [`Docs/DEFERRED.md`](DEFERRED.md):
+
+- **Do not** bundle `30_scripts/*.ps1` inside the exe (thin binary + `--repo` model).
+- **Do not** require `04_writeups` in validate (check 19 only when file exists).
+
+### Version
+
+- **`APP_VERSION` → 3.1.2** (adds `--smoke-test`). Tag **`v3.1.2`** when publishing release.
+
+### Commands
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\30_scripts\smoke_gui.ps1
+python .\30_scripts\workflow_gui.py --smoke-test
+```
+
+### Files touched (REM-8)
+
+| File | Change |
+|------|--------|
+| `30_scripts/workflow_gui.py` | `--smoke-test`, v3.1.2 |
+| `30_scripts/smoke_gui.ps1` | New |
+| `30_scripts/build_exe.ps1` | Optional Authenticode sign |
+| `.github/workflows/integrity.yml` | gui-smoke jobs |
+| `Docs/DEFERRED.md` | New |
+| `RELEASE-VERIFICATION.md`, `README.md`, `30_scripts/README.md`, `schema/CHANGELOG.md` | Docs |
+
+---
+
+## REM-9
+
 **When:** —
 
 **What:** *Reserved — next remediation entry.*
@@ -394,18 +439,18 @@ powershell -ExecutionPolicy Bypass -File .\30_scripts\tag_release.ps1 -Tag v3.1.
 
 | Item | Status |
 |------|--------|
-| **CI smoke** of `workflow_gui` import on PRs | Deferred |
-| **GitHub Release `v3.1.1`** | Run `tag_release.ps1 -Tag v3.1.1 -Push` when ready |
+| **GitHub Release `v3.1.2`** | `tag_release.ps1 -Tag v3.1.2 -Push` when ready |
 
-### Quick reference — files touched across REM-2–7
+### Quick reference — files touched across REM-2–8
 
 | Area | Key paths |
 |------|-----------|
 | Writeups | `04_writeups/_templates/*`, `30_scripts/scaffold_writeup.ps1` |
 | Hunt queries | `45_hunt_queries/`, `30_scripts/new_hunt_query.ps1` |
 | Notes | `20_notes/ctf-machine-index.md`, `lab-curriculum-map.md`, `detection-catalog.md`, `ctf-patterns/` |
-| GUI | `30_scripts/workflow_gui.py` (v3.1.1) |
+| GUI | `30_scripts/workflow_gui.py` (v3.1.2; smoke-test) |
 | Tracker / index | `samples_tracker.csv`, `INDEX.md` (REM-6) |
 | Validate | `30_scripts/validate.ps1` (checks 16–19) |
-| Build | `build_exe.ps1`, `build_linux.sh` (`-Clean`) |
+| Build / CI | `build_exe.ps1` (sign, `-Clean`), `smoke_gui.ps1`, `integrity.yml` |
+| Deferrals | `Docs/DEFERRED.md` |
 | Identity docs | `README.md`, `ENGAGEMENTS.md`, `WORKFLOW.md`, `30_scripts/README.md`, `WORKFLOW-GUI.md` |

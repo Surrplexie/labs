@@ -141,6 +141,27 @@ unexpected packages in the SBOM should be treated as noteworthy.
 
 ---
 
+## Optional Authenticode signing (maintainers)
+
+The Windows build script supports **optional** code signing when you have a code-signing
+certificate on the build machine. Nothing in CI or this repo stores a certificate.
+
+```powershell
+# Thumbprint from cert store (User or Machine)
+powershell -ExecutionPolicy Bypass -File .\30_scripts\build_exe.ps1 `
+    -SkipPipInstall -Clean -SignThumbprint YOUR_CERT_SHA1_THUMBPRINT
+
+# Or set once per session:
+$env:WORKFLOW_GUI_SIGN_THUMBPRINT = 'YOUR_CERT_SHA1_THUMBPRINT'
+powershell -ExecutionPolicy Bypass -File .\30_scripts\build_exe.ps1 -SkipPipInstall -Clean
+```
+
+Requires **Windows SDK `signtool.exe`** on PATH. If signing succeeds, `SHA256SUMS.txt` is
+regenerated to match the signed binary. Unsigned builds remain valid and expected for
+personal use.
+
+---
+
 ## Reproducing the build yourself
 
 If you do not want to trust the release binary, build it locally from source:

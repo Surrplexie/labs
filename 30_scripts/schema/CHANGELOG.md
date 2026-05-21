@@ -7,6 +7,17 @@ Tracks breaking and non-breaking changes to the two machine-readable contracts:
 
 ---
 
+## 2026-05-20 -- deferred tier closed (REM-8)
+
+- **`smoke_gui.ps1`** + CI jobs `gui-smoke` / `gui-smoke-linux` in `integrity.yml`.
+- **`workflow_gui.py --smoke-test`** — headless exit for CI (no `mainloop`).
+- **`build_exe.ps1 -SignThumbprint`** / `WORKFLOW_GUI_SIGN_THUMBPRINT` — optional Authenticode.
+- **`Docs/DEFERRED.md`** — permanent deferrals (no bundled PS1, no mandatory `04`).
+- **PyInstaller** — pin unchanged at `6.20.0`; smoke script warns on PyPI drift.
+- **`APP_VERSION` 3.1.2** when tagging next release.
+
+---
+
 ## 2026-05-20 -- validate + build (no schema bump)
 
 - **`validate.ps1` check 19** -- when `04_writeups/sample_XX.md` exists for an active slot,

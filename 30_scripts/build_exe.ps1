@@ -28,16 +28,22 @@
 .PARAMETER Clean
     After a successful build, remove dist/_build_tmp and dist/_spec (keeps .exe and SHA256SUMS.txt).
 
+.PARAMETER SignThumbprint
+    Optional SHA-1 certificate thumbprint for Authenticode signing via signtool.exe.
+    Falls back to env WORKFLOW_GUI_SIGN_THUMBPRINT when omitted. Skipped if signtool missing.
+
 .EXAMPLE
     powershell -ExecutionPolicy Bypass -File .\30_scripts\build_exe.ps1
     powershell -ExecutionPolicy Bypass -File .\30_scripts\build_exe.ps1 -Python python3.12
     powershell -ExecutionPolicy Bypass -File .\30_scripts\build_exe.ps1 -SkipPipInstall
     powershell -ExecutionPolicy Bypass -File .\30_scripts\build_exe.ps1 -SkipPipInstall -Clean
+    powershell -ExecutionPolicy Bypass -File .\30_scripts\build_exe.ps1 -SkipPipInstall -Clean -SignThumbprint ABCD1234...
 #>
 param(
-    [string]$Python        = 'python',
+    [string]$Python           = 'python',
     [switch]$SkipPipInstall,
-    [switch]$Clean
+    [switch]$Clean,
+    [string]$SignThumbprint   = ''
 )
 
 $ErrorActionPreference = 'Stop'
@@ -191,6 +197,31 @@ $exeHash  workflow_gui.exe
     Write-Host "Usage:"
     Write-Host "  dist\workflow_gui.exe"
     Write-Host "  dist\workflow_gui.exe --repo C:\path\to\labs"
+
+    $thumb = $SignThumbprint.Trim()
+    if (-not $thumb -and $env:WORKFLOW_GUI_SIGN_THUMBPRINT) {
+        $thumb = $env:WORKFLOW_GUI_SIGN_THUMBPRINT.Trim()
+    }
+    if ($thumb) {
+        $signtool = Get-Command signtool.exe -ErrorAction SilentlyContinue
+        if (-not $signtool) {
+            Write-Warning "SignThumbprint set but signtool.exe not on PATH -- binary left unsigned."
+        } else {
+            Write-Host "Signing with thumbprint $thumb..." -ForegroundColor Cyan
+            & signtool.exe sign /sha1 $thumb /fd SHA256 `
+                /tr http://timestamp.digicert.com /td SHA256 `
+                /d "workflow_gui labs assistant" $OutputExe
+            if ($LASTEXITCODE -ne 0) {
+                Write-Warning "signtool sign exited $LASTEXITCODE -- binary may be unsigned."
+            } else {
+                Write-Host "  Authenticode sign succeeded." -ForegroundColor Green
+                $exeHash = (Get-FileHash $OutputExe -Algorithm SHA256).Hash.ToUpper()
+                $sumsContent = $sumsContent -replace "(?m)^[0-9A-F]{64}  workflow_gui.exe", "$exeHash  workflow_gui.exe"
+                Set-Content -Path $SumsFile -Value $sumsContent -Encoding UTF8
+                Write-Host "  SHA256SUMS.txt updated after sign." -ForegroundColor DarkGray
+            }
+        }
+    }
 
     if ($Clean) {
         foreach ($dir in @($BuildTmp, $SpecDir)) {
