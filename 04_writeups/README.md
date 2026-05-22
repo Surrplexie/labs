@@ -63,23 +63,24 @@
 
 ## Scaffold a kind-correct writeup
 
-Templates live in [`_templates/`](./_templates/README.md).
+Templates live in [`_templates/`](./_templates/README.md). Files are **created on demand** — no stubs are pre-seeded.
 
 ```powershell
-# With new engagement (all four phases + 04 in one step)
+# At engagement creation (all four phases + 04 in one step)
 powershell -ExecutionPolicy Bypass -File .\30_scripts\new_engagement.ps1 `
     -NextNumber 37 -Kind ctf -Platform "HackTheBox" -Title "Lame" -WithLongWriteup
 
-# Standalone (reads engagement_kind from tracker when -Kind omitted)
+# After the fact — infers kind from tracker when -Kind omitted
+powershell -ExecutionPolicy Bypass -File .\30_scripts\scaffold_writeup.ps1 -SampleId sample_37
+
+# Explicit kind + title
 powershell -ExecutionPolicy Bypass -File .\30_scripts\scaffold_writeup.ps1 `
     -SampleId sample_37 -Kind ctf -Platform "HackTheBox" -Title "Lame"
 
-# Replace a pre-seeded file-outline with the correct kind template
+# Minimal placeholder ("I will write this up later")
 powershell -ExecutionPolicy Bypass -File .\30_scripts\scaffold_writeup.ps1 `
-    -SampleId sample_37 -Kind ctf -Overwrite
+    -SampleId sample_07 -Kind stub
 ```
-
-Pre-seeded `sample_01`–`sample_50` files are **file-malware-shaped**. For any CTF / lab / hunt slot use `-Overwrite` on first real use.
 
 ---
 
@@ -105,23 +106,24 @@ When a `04` file **does** exist for an active slot, `validate.ps1` **check 19** 
 
 ---
 
-## Naming and structure
+## Folder layout
 
 ```
 04_writeups/
   README.md              ← this file
   _templates/
-    file.md              ← malware long-form scaffold
-    ctf.md               ← CTF/HTB/THM scaffold
-    lab.md               ← course lab scaffold
-    hunt.md              ← threat hunt scaffold
+    file.md              ← malware long-form (12 sections)
+    ctf.md               ← CTF / HTB / THM walkthrough
+    lab.md               ← course lab narrative
+    hunt.md              ← detection-engineering write-up
+    _stub.md             ← minimal placeholder (5-line frontmatter)
     README.md
-  sample_01.md           ← one file per slot, created by scaffold_writeup.ps1
-  sample_37.md           ← CTF example
+  sample_01.md           ← created by scaffold_writeup.ps1 when you need it
+  sample_37.md           ← CTF example (kind: ctf)
   ...                    ← only slots where you actually write a long report
 ```
 
-One `04` file per slot ID maximum. Use the same `sample_XX` number as every other phase folder.
+**No stubs are pre-seeded.** Files are created on demand via `scaffold_writeup.ps1`. One `04` file per slot ID maximum; use the same `sample_XX` number as every other phase folder.
 
 ---
 

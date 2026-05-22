@@ -1,6 +1,6 @@
-Dev logs rules; REM-1, REM-2 any of these terms are the new 'updates' like "Update 1", all major logs entered here. Note; REM-1.2, REM-1.4 etc. are only for GitHub commits and pushing, never named here.
+﻿Dev logs rules; REM-1, REM-2 any of these terms are the new 'updates' like "Update 1", all major logs entered here. Note; REM-1.2, REM-1.4 etc. are only for GitHub commits and pushing, never named here.
 
-**Session arc (2026-05-18 → 2026-05-22):** Tiers 2–5 → **REM-6**–**REM-7** → **REM-8** deferred tier → **REM-9** `04_writeups` target model (docs only).
+**Session arc (2026-05-18 → 2026-05-22):** Tiers 2–5 → **REM-6**–**REM-7** → **REM-8** deferred tier → **REM-9** `04_writeups` overhaul §1–3 (target model, problems fixed, new layout).
 
 ---
 
@@ -450,21 +450,55 @@ python .\30_scripts\workflow_gui.py --smoke-test
 
 ### Hygiene / validate
 
-- **Flag-pattern false positives:** README evidence examples used literal `HTB{…}`-style strings → `validate.ps1` check 12 WARNs; reworded to generic “challenge flag strings” → **17 PASS, 0 WARN, 0 FAIL**.
+- **Flag-pattern false positives:** README evidence examples used inline code with platform-flag patterns → `validate.ps1` check 12 WARNs; reworded to generic "challenge flag strings" → **17 PASS, 0 WARN, 0 FAIL**.
+
+### §2 — Problems fixed
+
+| Problem | Fix |
+|---------|-----|
+| **50 identical pre-seeded stubs** — all `sample_01`–`sample_50.md` were the same 13 KB file-malware outline; CTF/lab/hunt slots had wrong `engagement_kind: file` | **Deleted all 50** — files now created on demand via `scaffold_writeup.ps1` |
+| **`file.md` template: 477 lines / 18 sections** — too many sections for a first-pass writeup; optional depth buried required depth | **Trimmed to 12 sections** (~290 lines); merged provenance + TI context + ethics into appendices; moved "quick-ref" table into §2 exec summary |
+| **No minimal placeholder** — if you just want to note "I'll write this up later" there was nothing lighter than the full template | **Added `_templates/_stub.md`** — 5-line frontmatter placeholder; upgradeable via `-Overwrite` |
+| **`scaffold_writeup.ps1` always warned "already exists. Use -Overwrite"** on CTF/lab/hunt slots because stubs were pre-seeded with wrong kind | Fixed by removing stubs; now no warning on first-time creation; also added `stub` to `ValidateSet` |
+
+### §3 — Recommended folder layout (implemented)
+
+```
+04_writeups/
+  README.md                ← two-layer model + per-kind when/skip tables
+  _templates/
+    file.md                ← trimmed: 12 sections, ~290 lines
+    ctf.md                 ← story arc, rabbit holes, ethics (unchanged)
+    lab.md                 ← objectives rubric, reflection (unchanged)
+    hunt.md                ← hypothesis → DE → FP (unchanged)
+    _stub.md               ← NEW: minimal 5-line frontmatter placeholder
+    README.md              ← template index + kind→file mapping
+  sample_01.md             ← created by scaffold_writeup.ps1 on demand
+  sample_37.md             ← CTF example (kind: ctf)
+  ...                      ← only slots where a long report is needed
+```
+
+**Design principles applied:**
+- No files pre-seeded — zero noise, zero kind-mismatch WARNs from check 19
+- One file per slot, same `sample_XX` ID as `00`–`03`
+- `_templates/` is read-only at engagement time — scaffold, then edit the copy
+- `_stub.md` bridges "I started this engagement" and "I wrote the full report"
 
 ### Not in REM-9 (planned follow-ups for `04` overhaul)
 
-- Folder layout / naming changes beyond docs
-- Template body rewrites (`file.md`, `ctf.md`, `lab.md`, `hunt.md`)
-- New validate rules or `scaffold_writeup.ps1` behavior
-- Pre-seeded `sample_01`–`sample_50` bulk re-scaffold
+- CTF/lab/hunt template body reviews (currently good but can be refined)
+- New validate rules specific to `04` content quality
 
 ### Files touched (REM-9)
 
 | File | Change |
 |------|--------|
-| `04_writeups/README.md` | Target model rewrite |
-| `04_writeups/_templates/README.md` | Template index + scaffold guidance |
+| `04_writeups/README.md` | Target model rewrite (§1); scaffold + layout section (§2–3) |
+| `04_writeups/_templates/README.md` | Template index, `_stub.md` entry, updated scaffold commands |
+| `04_writeups/_templates/file.md` | Trimmed 18 → 12 sections |
+| `04_writeups/_templates/_stub.md` | New minimal placeholder |
+| `04_writeups/sample_01.md` … `sample_50.md` | **Deleted** (50 pre-seeded stubs removed) |
+| `30_scripts/scaffold_writeup.ps1` | Added `stub` to `ValidateSet`; `_stub.md` path resolution |
 | `ENGAGEMENTS.md` | Optional `04` section aligned to target model |
 | `Docs/Remediations.md` | This log |
 
@@ -473,7 +507,7 @@ python .\30_scripts\workflow_gui.py --smoke-test
 | Item | Status |
 |------|--------|
 | **GitHub Release `v3.1.2`** | `tag_release.ps1 -Tag v3.1.2 -Push` when ready |
-| **`04` overhaul §2+** | Layout, templates, automation — after target model |
+| **`04` overhaul §4+** | Template body refinements, CTF/lab/hunt polish |
 
 ### Quick reference — files touched across REM-2–9
 

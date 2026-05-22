@@ -1,47 +1,44 @@
 ﻿---
-# Writeup document metadata (optional YAML -- not validated by 03_findings schema)
+# Long-form malware / artifact analysis report (optional -- not validated by 03_findings schema)
 writeup_version: 1
 related_sample_id: SAMPLE_ID
 engagement_kind: file
-# ctf | lab | hunt -- adjust sections if not file-kind
 
 title: "<FILL -- e.g. Long-form analysis: <name_tag> (SHA256 …)>"
 subtitle: "<FILL -- optional one-line hook>"
 
-analyst: "<FILL>"
-reviewers: [] # optional list
+analyst: ANALYST
+reviewers: []
 
-classification: TLP:CLEAR # TLP:CLEAR | TLP:GREEN | TLP:AMBER | TLP:RED -- pick what you are willing to share
+classification: TLP:CLEAR  # TLP:CLEAR | TLP:GREEN | TLP:AMBER | TLP:RED
 distribution: "<FILL -- e.g. Public portfolio / hiring packet / internal notes>"
 
-date_draft: "YYYY-MM-DD"
-date_final: "" # set when you freeze the narrative
+date_draft: DATE
+date_final: ""  # set when you freeze the narrative
 
-vm_profile: "<FILL -- e.g. Win11 x64, Defender state, snapshot name>"
-tooling_snapshot: "<FILL -- DIE / PEStudio / CFF / HxD / Procmon / Wireshark versions + build dates>"
+vm_profile: "<FILL -- e.g. Win11 x64, Defender off, snapshot name>"
+tooling_snapshot: "<FILL -- DIE / PEStudio / CFF / Procmon / Wireshark versions>"
 
 abstract: |
-  <FILL -- 3–6 sentences: what the object is, what you did, strongest conclusion,
+  <FILL -- 3–5 sentences: what the object is, what you did, strongest conclusion,
   explicit scope limits (e.g. no memory forensics).>
 
 keywords:
   - "<FILL>"
-  - "<FILL>"
+  - malware-analysis
 
 evidence_index:
   acquisition: ../00_original/SAMPLE_ID.md
-  static: ../01_static/SAMPLE_ID.md
-  dynamic: ../02_dynamic/SAMPLE_ID.md
-  findings: ../03_findings/SAMPLE_ID.md
+  static:      ../01_static/SAMPLE_ID.md
+  dynamic:     ../02_dynamic/SAMPLE_ID.md
+  findings:    ../03_findings/SAMPLE_ID.md
   screenshots: ../50_screenshots/SAMPLE_ID/
-  iocs_csv: ../40_iocs/indicators.csv
+  iocs_csv:    ../40_iocs/indicators.csv
 ---
-
-<!-- Same slot ID as other phase folders: replace <FILL> throughout when you author the long-form report. -->
 
 # <FILL -- same as title>
 
-> **Related engagement:** [`SAMPLE_ID`](../03_findings/SAMPLE_ID.md) · **Kind:** `<FILL>` · **Classification:** `<FILL>`
+> **Related engagement:** [`SAMPLE_ID`](../03_findings/SAMPLE_ID.md) · **Kind:** `file` · **Classification:** `<FILL>`
 
 ---
 
@@ -49,42 +46,32 @@ evidence_index:
 
 1. [Document control](#1-document-control)
 2. [Executive summary](#2-executive-summary)
-3. [Scope, assumptions, and non-goals](#3-scope-assumptions-and-non-goals)
-4. [Provenance and chain of custody (public)](#4-provenance-and-chain-of-custody-public)
-5. [Executive technical snapshot](#5-executive-technical-snapshot)
-6. [Static analysis (expanded)](#6-static-analysis-expanded)
-7. [Dynamic analysis (expanded)](#7-dynamic-analysis-expanded)
-8. [Behavior timeline](#8-behavior-timeline)
-9. [Network analysis](#9-network-analysis)
-10. [Host-based indicators and artifacts](#10-host-based-indicators-and-artifacts)
-11. [MITRE ATT&CK mapping (narrative)](#11-mitre-attck-mapping-narrative)
-12. [Detection engineering](#12-detection-engineering)
-13. [Threat intelligence context](#13-threat-intelligence-context)
-14. [Recommendations](#14-recommendations)
-15. [Limitations, gaps, and follow-on work](#15-limitations-gaps-and-follow-on-work)
-16. [Ethics, safety, and legal notes](#16-ethics-safety-and-legal-notes)
-17. [References and prior art](#17-references-and-prior-art)
-18. [Appendices](#18-appendices)
+3. [Scope and assumptions](#3-scope-and-assumptions)
+4. [Static analysis highlights](#4-static-analysis-highlights)
+5. [Dynamic analysis highlights](#5-dynamic-analysis-highlights)
+6. [Behavior timeline](#6-behavior-timeline)
+7. [Network analysis](#7-network-analysis)
+8. [MITRE ATT&CK mapping](#8-mitre-attck-mapping)
+9. [Detection engineering](#9-detection-engineering)
+10. [Recommendations](#10-recommendations)
+11. [Limitations and follow-on work](#11-limitations-and-follow-on-work)
+12. [Appendices](#12-appendices)
 
 ---
 
 ## 1. Document control
 
 | Field | Value |
-|--------|--------|
+|-------|-------|
 | Writeup ID | `<FILL -- e.g. W-2026-001>` |
+| Slot | SAMPLE_ID |
 | Version | `0.1` draft / `1.0` final |
-| Analyst | `<FILL>` |
-| Review status | `<FILL -- self-reviewed / peer-reviewed>` |
-| Last updated | `<FILL YYYY-MM-DD>` |
-| Canonical hash (sample) | `<FILL SHA256>` |
+| Analyst | ANALYST |
+| Last updated | DATE |
 
-**Revision log**
-
-| Version | Date | Author | Summary of change |
-|---------|------|--------|---------------------|
-| 0.1 | YYYY-MM-DD | `<FILL>` | Initial draft |
-| | | | |
+| Version | Date | Summary |
+|---------|------|---------|
+| 0.1 | DATE | Initial draft |
 
 ---
 
@@ -92,294 +79,187 @@ evidence_index:
 
 **Audience:** `<FILL -- e.g. hiring manager / IR lead / future you>`
 
-`<FILL -- 1 tight paragraph: verdict class, why it matters, what evidence tier supports it (static only / static + partial dynamic / full instrumentation).>`
+`<FILL -- 1 tight paragraph: verdict class, why it matters, what evidence tier supports it.>`
 
-**Bottom line up front (BLUF):**
+**BLUF:**
 
-- **Verdict:** `<benign | suspicious | malicious | unknown>` — `<one sentence why>`.
+- **Verdict:** `<benign | suspicious | malicious | unknown>` — `<one sentence why>`
 - **Primary risk:** `<FILL>`
 - **Primary evidence:** `<FILL -- cite phase files or screenshot IDs>`
-- **Confidence:** `<high | medium-high | medium | low>` — `<one sentence uncertainty>`
+- **Confidence:** `<high | medium | low>` — `<one sentence uncertainty>`
+
+**Quick reference**
+
+| Attribute | Value |
+|-----------|-------|
+| Object type | `<FILL -- PE32 / script / archive / …>` |
+| Claimed name | `<FILL>` |
+| Size (bytes) | `<FILL>` |
+| Compiler / packer | `<FILL>` |
+| Persistence observed | `<yes / no / unknown>` |
+| Network C2 observed | `<yes / no / unknown>` |
 
 ---
 
-## 3. Scope, assumptions, and non-goals
+## 3. Scope and assumptions
 
 ### In scope
-
 - [ ] `<FILL>`
 - [ ] `<FILL>`
 
-### Out of scope (explicit non-goals)
-
-- [ ] `<FILL -- e.g. full reverse engineering / unpacking inner payload>`
-- [ ] `<FILL>`
-
-### Assumptions
-
-| # | Assumption | Risk if wrong |
-|---|------------|----------------|
-| A1 | `<FILL>` | `<FILL>` |
-| A2 | `<FILL>` | `<FILL>` |
+### Out of scope
+- [ ] `<FILL -- e.g. full unpacking / memory forensics>`
 
 ### Environment fidelity
 
 | Control | Documented? |
-|---------|----------------|
-| VM snapshot baseline | `<yes / no -- FILL>` |
-| Time sync (VM clock) | `<FILL>` |
-| Network posture (isolated / NAT / blocked) | `<FILL>` |
+|---------|-------------|
+| VM snapshot baseline | `<yes / no>` |
+| Network posture | `<isolated / NAT / blocked>` |
 | AV / EDR state during run | `<FILL>` |
 
 ---
 
-## 4. Provenance and chain of custody (public)
+## 4. Static analysis highlights
 
-> Describe only **public** acquisition paths. No host machine paths. VM paths are acceptable if policy allows (see `WORKFLOW.md`).
+> Full tool-by-tool log: [`01_static/SAMPLE_ID.md`](../01_static/SAMPLE_ID.md). Synthesize here; do not paste every DIE/PEStudio line.
 
-| Stage | Detail |
-|--------|--------|
-| Public source | `<FILL -- e.g. MalwareBazaar URL>` |
-| First seen (source) | `<FILL>` |
-| How you selected the object | `<FILL>` |
-| Download method | `<FILL -- VM browser / API>` |
-| Hash verification | `<FILL -- algorithm, match yes/no>` |
-| Naming on disk in VM | `<FILL -- e.g. SHA256-as-folder pattern>` |
+### Format and packaging
 
-**Source excerpt (paraphrase, no paste of private feeds):**
+`<FILL -- magic, format, nested containers, overlay, entropy interpretation>`
 
-`<FILL>`
+### Imports and capabilities
 
----
+`<FILL -- cluster by theme: execution, injection, persistence, credential access, network, anti-analysis>`
 
-## 5. Executive technical snapshot
+### Strings and configuration
 
-| Attribute | Value |
-|-----------|--------|
-| Object type | `<FILL -- PE32 / script / archive / …>` |
-| Claimed name | `<FILL>` |
-| Size (bytes) | `<FILL>` |
-| Compiler / packer / installer (summary) | `<FILL>` |
-| Entry behavior (one line) | `<FILL>` |
-| Persistence observed | `<yes / no / unknown>` |
-| Network C2 observed | `<yes / no / unknown>` |
-
-**High-signal static facts**
-
-`<FILL -- bullet list: entropy, section anomalies, manifest, suspicious imports, overlay>`
-
-**High-signal dynamic facts**
-
-`<FILL -- bullet list: children, paths, registry, sockets -- or state "not instrumented">`
-
----
-
-## 6. Static analysis (expanded)
-
-> For tool-by-tool notes, the phase log is canonical: [`01_static/SAMPLE_ID.md`](../01_static/SAMPLE_ID.md). Here, **synthesize** and add interpretation that did not fit the triage template.
-
-### 6.1 Object identity and format
-
-`<FILL -- magic, format, container vs payload, nested objects>`
-
-### 6.2 Compilation and packaging story
-
-| Question | Answer |
-|----------|--------|
-| What toolchain signals exist? | `<FILL>` |
-| Installer vs raw PE? | `<FILL>` |
-| Overlay / appended data? | `<FILL offset/size/interpretation>` |
-| Entropy interpretation | `<FILL>` |
-
-### 6.3 Imports, capabilities, and API surface
-
-`<FILL -- cluster imports into themes: execution, injection, persistence, credential access, network, anti-analysis>`
-
-### 6.4 Strings, configuration, and weak signals
-
-| Category | Examples found | Confidence |
-|----------|----------------|------------|
+| Category | Examples | Confidence |
+|----------|----------|------------|
 | URLs / domains | `<FILL>` | `<>` |
 | File paths | `<FILL>` | `<>` |
-| Registry keys (static) | `<FILL>` | `<>` |
+| Registry keys | `<FILL>` | `<>` |
 | Mutex / named objects | `<FILL>` | `<>` |
-| Error / decoy UI text | `<FILL>` | `<>` |
 
-### 6.5 Cryptography and encoding
+### Evasion indicators (static only)
 
-`<FILL -- AES/RC4/XOR/Base64 blobs, crypto APIs, cert pinning hints, or "none observed">`
+`<FILL -- VM checks, timing, opaque predicates, TLS callbacks; or "none observed">`
 
-### 6.6 Anti-analysis and evasion (static indicators only)
+### Static-only conclusion
 
-`<FILL -- VM checks, timing, opaque predicates, section names, TLS callbacks mention if seen>`
-
-### 6.7 Static-only conclusion (before execution)
-
-`<FILL -- 1 short paragraph bridging to dynamic or explaining why you stopped at static>`
+`<FILL -- bridge to dynamic, or explain why you stopped at static>`
 
 ---
 
-## 7. Dynamic analysis (expanded)
+## 5. Dynamic analysis highlights
 
-> Canonical run log: [`02_dynamic/SAMPLE_ID.md`](../02_dynamic/SAMPLE_ID.md)
+> Canonical run log: [`02_dynamic/SAMPLE_ID.md`](../02_dynamic/SAMPLE_ID.md).
 
-### 7.1 Run card (reproducibility)
+### Run card
 
 | Field | Value |
-|--------|--------|
-| Execution count | `<FILL>` |
-| Launch vector | `<double-click / cmdline / injected / user-assisted>` |
-| Integrity level | `<standard user / elevated>` |
-| Instrumentation | `<Procmon / ProcExp / TCPView / Wireshark / debugger / none>` |
-| Capture window | `<FILL duration>` |
-| Snapshot revert | `<yes / no>` |
+|-------|-------|
+| Launch vector | `<double-click / cmdline / injected>` |
+| Integrity level | `<standard / elevated>` |
+| Instrumentation | `<Procmon / TCPView / Wireshark / debugger / none>` |
 
-### 7.2 Process lifecycle
+### Key effects (file system, registry, process)
 
-`<FILL -- narrative or table: parent → child, PIDs if captured, exit codes>`
+`<FILL -- children, drops, Run keys, services; cite Procmon evidence IDs>`
 
-### 7.3 File system effects
+### Persistence mechanisms observed
 
-`<FILL -- drops, staging, self-copy, extension patterns; cite Procmon evidence IDs or CSV filter>`
+| Mechanism | Observed? | Evidence |
+|-----------|-----------|----------|
+| Run / RunOnce | `< >` | `<>` |
+| Scheduled task | `< >` | `<>` |
+| Service | `< >` | `<>` |
+| Other | `< >` | `<>` |
 
-### 7.4 Registry effects
-
-`<FILL -- Run keys, IFEO, services, COM hijacks, file associations>`
-
-### 7.5 Persistence assessment
-
-| Mechanism | Observed? | Evidence pointer |
-|-----------|-----------|------------------|
-| Run / RunOnce | `<>` | `<>` |
-| Scheduled task | `<>` | `<>` |
-| Service | `<>` | `<>` |
-| WMI subscription | `<>` | `<>` |
-| Startup folder | `<>` | `<>` |
-| Other | `<>` | `<>` |
-
-### 7.6 User-visible behavior
-
-`<FILL -- dialogs, fake errors, installer UX, decoys; link screenshot filenames>`
-
-### 7.7 Dynamic-only conclusion
+### Dynamic-only conclusion
 
 `<FILL>`
 
 ---
 
-## 8. Behavior timeline
+## 6. Behavior timeline
 
-> Build a **linear story**. Each row should be defensible from an evidence artifact.
+> Each row should map to a defensible artifact.
 
-| UTC / local | Phase | Event | Evidence |
-|-------------|-------|-------|----------|
+| Offset | Phase | Event | Evidence |
+|--------|-------|-------|----------|
 | T+0s | Pre-run | `<FILL>` | `<>` |
 | T+… | Execution | `<FILL>` | `<>` |
 | T+… | Post-run | `<FILL>` | `<>` |
 
 ---
 
-## 9. Network analysis
+## 7. Network analysis
 
-### 9.1 Observed traffic
+### Observed traffic
 
-| Time | Protocol | Local | Remote | Process | Notes |
-|------|----------|-------|--------|---------|-------|
-| `<>` | `<>` | `<>` | `<>` | `<>` | `<>` |
+| Time | Protocol | Remote | Process | Notes |
+|------|----------|--------|---------|-------|
+| `<>` | `<>` | `<>` | `<>` | `<>` |
 
-### 9.2 DNS
+### DNS and TLS
 
 `<FILL or "not captured">`
 
-### 9.3 TLS / JA3 / fingerprints
+### Delivery vs runtime
 
-`<FILL or "not analyzed">`
-
-### 9.4 Delivery vs runtime network
-
-| Class | Indicator | Observed in lab? | Source |
-|-------|-----------|------------------|--------|
-| Delivery URL | `<>` | `<>` | `<Bazaar / other>` |
-| Runtime C2 | `<>` | `<>` | `<dynamic / unknown>` |
+| Class | Indicator | Observed in lab? |
+|-------|-----------|------------------|
+| Delivery URL | `<>` | `<>` |
+| Runtime C2 | `<>` | `<>` |
 
 ---
 
-## 10. Host-based indicators and artifacts
+## 8. MITRE ATT&CK mapping
 
-### 10.1 Consolidated IOC table (writeup-local)
-
-> Keep [`40_iocs/indicators.csv`](../40_iocs/indicators.csv) authoritative for automation. This table may add **context** columns.
-
-| Type | Value | First seen | Observed? | Notes |
-|------|-------|------------|-----------|-------|
-| sha256 | `<>` | `<>` | `<>` | `<>` |
-| … | … | … | … | … |
-
-### 10.2 Forensic artifact paths (VM-safe)
-
-`<FILL -- only VM profile paths you are willing to publish>`
-
-### 10.3 File system YARA / hunt ideas
-
-`<FILL>`
-
----
-
-## 11. MITRE ATT&CK mapping (narrative)
-
-> [`03_findings`](../03_findings/SAMPLE_ID.md) lists IDs; here, **justify** each mapping with technique → observation → confidence.
-
-### 11.1 Tactic overview
-
-| Tactic | Techniques cited | Why this tactic applies |
-|--------|--------------------|-------------------------|
-| `<FILL>` | `<>` | `<>` |
-
-### 11.2 Technique deep rows
+> [`03_findings`](../03_findings/SAMPLE_ID.md) lists IDs. Here, **justify** each mapping.
 
 | ID | Name | Observation | Data source | Confidence |
 |----|------|-------------|-------------|------------|
-| Txxxx | `<>` | `<>` | `<static / dynamic / intel>` | `<>` |
+| Txxxx | `<>` | `<>` | `<static / dynamic>` | `<>` |
 
-### 11.3 Detections already mapped in `03_findings` but worth elaborating
+### Tactic summary
 
-`<FILL>`
+| Tactic | Techniques | Why applicable |
+|--------|------------|----------------|
+| `<FILL>` | `<>` | `<>` |
 
 ---
 
-## 12. Detection engineering
+## 9. Detection engineering
 
-### 12.1 Sigma / Elastic / Splunk ideas
+### Rule ideas (Sigma / KQL / Splunk sketch)
 
-`<FILL -- pseudocode or rule sketch; avoid vendor-specific secrets>`
+```
+<FILL -- pseudocode; avoid vendor-specific secrets>
+```
 
-### 12.2 YARA / file hunting
-
-`<FILL>`
-
-### 12.3 Behavioral hunts (process / command-line)
+### YARA / file hunting
 
 `<FILL>`
 
-### 12.4 Network detection
+### Behavioral process / command-line hunts
 
 `<FILL>`
 
-### 12.5 False positive analysis
+### False positive analysis
 
 | Detection idea | Expected FP | Mitigation |
-|----------------|--------------|------------|
+|----------------|-------------|------------|
 | `<>` | `<>` | `<>` |
 
----
+### Threat intelligence context
 
-## 13. Threat intelligence context
-
-`<FILL -- cluster names, public reporting links, caveats about attribution; or "none sought">`
+`<FILL -- public cluster names, blog links, attribution caveats; or "none sought">`
 
 ---
 
-## 14. Recommendations
+## 10. Recommendations
 
 ### For defenders
 
@@ -391,18 +271,13 @@ evidence_index:
 1. `<FILL>`
 2. `<FILL>`
 
-### For your own lab hygiene
-
-1. `<FILL>`
-2. `<FILL>`
-
 ---
 
-## 15. Limitations, gaps, and follow-on work
+## 11. Limitations and follow-on work
 
-| Gap | Impact | Suggested next step | Cost / risk |
-|-----|--------|---------------------|-------------|
-| `<>` | `<>` | `<>` | `<>` |
+| Gap | Impact | Suggested next step |
+|-----|--------|---------------------|
+| `<>` | `<>` | `<>` |
 
 **What would change the verdict**
 
@@ -410,26 +285,9 @@ evidence_index:
 
 ---
 
-## 16. Ethics, safety, and legal notes
+## 12. Appendices
 
-`<FILL -- authorized environment only, no operational use of IOCs against third parties without authorization, regional considerations>`
-
----
-
-## 17. References and prior art
-
-| Type | Citation |
-|------|----------|
-| MalwareBazaar | `<URL>` |
-| Vendor / blog | `<URL>` |
-| ATT&CK | `<URL>` |
-| Tool docs | `<URL>` |
-
----
-
-## 18. Appendices
-
-### Appendix A -- Hash bundle
+### Appendix A — Hash bundle
 
 | Algorithm | Hash |
 |-----------|------|
@@ -438,39 +296,44 @@ evidence_index:
 | MD5 | `<>` |
 | imphash | `<>` |
 | ssdeep | `<>` |
-| TLSH | `<>` |
 
-### Appendix B -- Section / PE layout notes
+### Appendix B — Provenance
 
-`<FILL optional>`
+| Stage | Detail |
+|-------|--------|
+| Public source | `<FILL -- e.g. MalwareBazaar URL>` |
+| Download method | `<FILL -- VM browser / API>` |
+| Hash verification | `<FILL -- algorithm, match yes/no>` |
 
-### Appendix C -- Tool command log
+### Appendix C — Tool command log
 
 ```text
 <FILL -- exact commands you ran; scrub secrets>
 ```
 
-### Appendix D -- Screenshot manifest
+### Appendix D — Screenshot manifest
 
 | File | Description |
 |------|-------------|
-| `IMG_0001.png` | `<>` |
-| … | … |
+| `<FILL>` | `<>` |
 
 _(See also [`SHOT_INDEX.txt`](../50_screenshots/SAMPLE_ID/SHOT_INDEX.txt).)_
 
-### Appendix E -- Glossary
+### Appendix E — References
 
-| Term | Definition |
-|------|------------|
-| `<>` | `<>` |
+| Type | Citation |
+|------|----------|
+| MalwareBazaar | `<URL>` |
+| Vendor / blog | `<URL>` |
+| ATT&CK | `<URL>` |
 
 ---
 
 ## Final checklist before commit
 
-- [ ] Redaction: no analyst host paths, secrets, or internal-only hostnames
-- [ ] EXIF stripped on any new images
-- [ ] IOC CSV updated if this writeup introduces **new** indicators not already in `40_iocs`
-- [ ] `03_findings` still accurate relative to this writeup (no contradictions)
-- [ ] Classification / distribution statement matches what you are publishing
+- [ ] No analyst host paths, internal-only hostnames, or secrets
+- [ ] EXIF stripped on any new screenshots
+- [ ] IOC CSV (`40_iocs/indicators.csv`) updated for any new confirmed indicators
+- [ ] `03_findings/SAMPLE_ID.md` still accurate relative to this writeup
+- [ ] Classification / distribution matches what you are publishing
+- [ ] `redact-check.ps1` passed

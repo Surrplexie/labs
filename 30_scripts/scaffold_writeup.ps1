@@ -40,7 +40,7 @@ param(
     [ValidateRange(1, 99)]
     [int]$NextNumber = 0,
 
-    [ValidateSet('file', 'ctf', 'lab', 'hunt')]
+    [ValidateSet('file', 'ctf', 'lab', 'hunt', 'stub')]
     [string]$Kind,
 
     [string]$Analyst  = 'Surrplexie',
@@ -79,7 +79,8 @@ if (-not $Kind -and (Test-Path $csvPath)) {
 }
 if (-not $Kind) { $Kind = 'file' }
 
-$templatePath = Join-Path $root "04_writeups\_templates\$Kind.md"
+$templateFile  = if ($Kind -eq 'stub') { '_stub.md' } else { "$Kind.md" }
+$templatePath = Join-Path $root "04_writeups\_templates\$templateFile"
 if (-not (Test-Path $templatePath)) {
     Write-Error "Template not found: $templatePath (kind=$Kind)"
     exit 1
