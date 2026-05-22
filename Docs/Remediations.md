@@ -1,6 +1,6 @@
 ﻿Dev logs rules; REM-1, REM-2 any of these terms are the new 'updates' like "Update 1", all major logs entered here. Note; REM-1.2, REM-1.4 etc. are only for GitHub commits and pushing, never named here.
 
-**Session arc (2026-05-18 → 2026-05-22):** Tiers 2–5 → **REM-6**–**REM-7** → **REM-8** deferred tier → **REM-9** `04_writeups` overhaul §1–4 → **REM-10** §5–6 (migration utility, close hint, writeup index, validate check 20).
+**Session arc (2026-05-18 → 2026-05-22):** Tiers 2–5 → **REM-6**–**REM-7** → **REM-8** deferred tier → **REM-9** `04_writeups` overhaul §1–4 → **REM-10** §5–6 (migration utility, close hint, writeup index, validate 20) → **REM-11** slot seeding + GUI next-open-slot.
 
 ---
 
@@ -596,21 +596,61 @@ The 50 pre-seeded stubs were already deleted in REM-9. The migration utility for
 | `30_scripts/validate.ps1` | Check 20: writeup_version + public_writeup_safe gate |
 | `Docs/Remediations.md` | This log |
 
+---
+
+## REM-11
+
+**When:** 2026-05-22
+
+**What:** Slot template generator + GUI next-open-slot enhancements.
+
+### Deliverables
+
+**`30_scripts/seed_all_slots.ps1`** (new):
+- Iterates over slots 01–50 (or a `-SlotRange` subset), determines `engagement_kind` from tracker or slot band, calls `new_engagement.ps1 -ReserveOnly` for each slot that is missing phase files
+- Skips sample_01 by default (`-SkipSlot1:$false` to include)
+- Skips active slots (non-empty status + name_tag) by default (`-SkipActive:$false` to include)
+- Skips slots that already have all 4 phase files (`-SkipExisting:$false` to overwrite)
+- `-WithWriteup` also seeds a `_stub.md` placeholder in `04_writeups/` for each slot
+- `-DryRun` preview mode; `-SlotRange "31-40"` for band-only seeding
+- Uses `-ReserveOnly` so tracker status stays `empty` — validate continues to skip these slots
+
+**GUI `workflow_gui.py` v3.2.0**:
+- **Auto-populate on startup**: if repo root is found, `_auto_detect_num()` runs automatically after UI builds — slot # and kind pre-filled without clicking anything
+- **Auto-populate on Browse**: `_browse_repo()` now calls `_auto_detect_num()` after setting repo root
+- **"→ Next open slot" button**: renamed from "Auto-detect" for clarity
+- **Persistent hint label**: shows `← next open: sample_XX  (kind: YYY)` inline next to the slot # field after detection
+
+**GUI Tools tab** (new "Slot management" section):
+- **Seed all reserve slots (dry run)** — runs `seed_all_slots.ps1 -DryRun`
+- **Seed all reserve slots** — runs `seed_all_slots.ps1` (creates all missing phase stubs 02–50)
+- **Scaffold 04_writeup (context slot)** — runs `scaffold_writeup.ps1` for the context sample ID shown in the Tools tab, with overwrite confirmation dialog if file already exists
+- **Regen Writeup Index** — added to main tools list; runs `update_writeup_index.ps1`
+- Validate description updated: "19 → 20 structural / kind-aware integrity checks"
+
+### Files touched (REM-11)
+
+| File | Change |
+|------|--------|
+| `30_scripts/seed_all_slots.ps1` | New — bulk slot template generator |
+| `30_scripts/workflow_gui.py` | v3.2.0: auto-detect on load, hint label, slot management panel |
+| `Docs/Remediations.md` | This log |
+
 ### Open follow-ups
 
 | Item | Status |
 |------|--------|
-| **GitHub Release `v3.1.2`** | `tag_release.ps1 -Tag v3.1.2 -Push` when ready |
-| **`04` overhaul §7+ (integration)** | export-summary fields, main INDEX column, GUI writeup tab |
+| **GitHub Release `v3.2.0`** | `tag_release.ps1 -Tag v3.2.0 -Push` when ready |
+| **`04` overhaul §7+ (integration)** | export-summary fields, main INDEX column |
 
-### Quick reference — files touched across REM-2–10
+### Quick reference — files touched across REM-2–11
 
 | Area | Key paths |
 |------|-----------|
-| Writeups | `04_writeups/README.md`, `_templates/*`, `INDEX.md`, `scaffold_writeup.ps1`, `reset_writeup_stubs.ps1`, `update_writeup_index.ps1` |
+| Writeups | `04_writeups/README.md`, `_templates/*`, `INDEX.md`, `scaffold_writeup.ps1`, `reset_writeup_stubs.ps1`, `update_writeup_index.ps1`, `seed_all_slots.ps1` |
 | Hunt queries | `45_hunt_queries/`, `30_scripts/new_hunt_query.ps1` |
 | Notes | `20_notes/ctf-machine-index.md`, `lab-curriculum-map.md`, `detection-catalog.md`, `ctf-patterns/` |
-| GUI | `30_scripts/workflow_gui.py` (v3.1.2; smoke-test) |
+| GUI | `30_scripts/workflow_gui.py` (v3.2.0; auto next-slot, seed panel, writeup scaffold) |
 | Tracker / index | `samples_tracker.csv`, `INDEX.md` (REM-6) |
 | Validate | `30_scripts/validate.ps1` (checks 16–20) |
 | Build / CI | `build_exe.ps1` (sign, `-Clean`), `smoke_gui.ps1`, `integrity.yml` |

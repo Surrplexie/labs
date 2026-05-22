@@ -36,7 +36,7 @@ except ImportError:
 # ---------------------------------------------------------------------------
 
 APP_TITLE   = "Workflow HUD -- Labs Engagement Assistant"
-APP_VERSION = "3.1.2"
+APP_VERSION = "3.2.0"
 CONFIG_FILE = Path(__file__).parent / ".workflow_gui_config.json"
 
 VERDICTS     = ["suspicious", "malicious", "benign", "unknown"]
@@ -418,6 +418,8 @@ class WorkflowApp(tk.Tk):
         self._build_styles()
         self._build_ui()
         self._refresh_repo_label()
+        if self.repo_root:
+            self.after(80, self._auto_detect_num)
 
     # -----------------------------------------------------------------------
     # Styles
@@ -514,8 +516,11 @@ class WorkflowApp(tk.Tk):
         nf.grid(row=R, column=1, sticky="ew", padx=(0, 12), pady=3)
         self._ns["num"] = tk.StringVar()
         ttk.Entry(nf, textvariable=self._ns["num"], width=6).pack(side="left")
-        ttk.Button(nf, text="Auto-detect",
+        ttk.Button(nf, text="→ Next open slot",
                    command=self._auto_detect_num).pack(side="left", padx=(8, 0))
+        self._next_slot_hint = tk.StringVar(value="")
+        ttk.Label(nf, textvariable=self._next_slot_hint,
+                  style="Dim.TLabel").pack(side="left", padx=(10, 0))
         self._ns["num"].trace_add("write", self._on_slot_num_change)
         R += 1
 
@@ -1024,10 +1029,11 @@ class WorkflowApp(tk.Tk):
         tool_frame.pack(fill="x", padx=14, pady=4)
 
         tools = [
-            ("Validate",             "validate.ps1",        "19 structural / kind-aware integrity checks."),
-            ("Export / Regen INDEX", "export-summary.ps1",  "Rebuild INDEX.md, summary.json, portfolio.json."),
-            ("Redact Check",         "redact-check.ps1",    "Scan for PII and host-machine identity leaks."),
-            ("Strip EXIF",           "strip-exif.ps1",      "Strip metadata from 50_screenshots/ images."),
+            ("Validate",             "validate.ps1",              "20 structural / kind-aware integrity checks."),
+            ("Export / Regen INDEX", "export-summary.ps1",        "Rebuild INDEX.md, summary.json, portfolio.json."),
+            ("Regen Writeup Index",  "update_writeup_index.ps1",  "Rebuild 04_writeups/INDEX.md from existing files."),
+            ("Redact Check",         "redact-check.ps1",          "Scan for PII and host-machine identity leaks."),
+            ("Strip EXIF",           "strip-exif.ps1",            "Strip metadata from 50_screenshots/ images."),
         ]
         for label, script, desc in tools:
             rf = ttk.Frame(tool_frame)
@@ -1035,6 +1041,32 @@ class WorkflowApp(tk.Tk):
             ttk.Button(rf, text=f"  {label}  ",
                        command=lambda s=script: self._run_ps_script(s)).pack(side="left")
             ttk.Label(rf, text=desc, style="Dim.TLabel").pack(side="left", padx=12)
+
+        # ---- Slot management ----
+        slot_frame = ttk.LabelFrame(tool_frame, text="  Slot management  ", padding=8)
+        slot_frame.pack(fill="x", pady=(10, 5))
+        ttk.Label(slot_frame,
+                  text="Bulk-create phase templates and long-form writeup stubs for reserve slots.",
+                  style="Dim.TLabel").pack(anchor="w", pady=(0, 6))
+
+        sf1 = ttk.Frame(slot_frame); sf1.pack(fill="x", pady=3)
+        ttk.Button(sf1, text="  Seed all reserve slots (dry run)  ",
+                   command=lambda: self._run_ps_script(
+                       "seed_all_slots.ps1", extra_args=["-DryRun"])).pack(side="left")
+        ttk.Label(sf1, text="Preview what seed_all_slots.ps1 would create.",
+                  style="Dim.TLabel").pack(side="left", padx=12)
+
+        sf2 = ttk.Frame(slot_frame); sf2.pack(fill="x", pady=3)
+        ttk.Button(sf2, text="  Seed all reserve slots  ",
+                   command=lambda: self._run_ps_script("seed_all_slots.ps1")).pack(side="left")
+        ttk.Label(sf2, text="Create kind-correct phase stubs for slots 02–50 (skips slot 01 and active slots).",
+                  style="Dim.TLabel").pack(side="left", padx=12)
+
+        sf3 = ttk.Frame(slot_frame); sf3.pack(fill="x", pady=3)
+        ttk.Button(sf3, text="  Scaffold 04_writeup (context slot)  ",
+                   command=self._tools_scaffold_writeup).pack(side="left")
+        ttk.Label(sf3, text="Create long-form writeup template for the context sample ID above.",
+                  style="Dim.TLabel").pack(side="left", padx=12)
 
         # ---- Hunt ingest (shown first when kind=hunt) ----
         self._tools_hunt_frame = ttk.LabelFrame(
@@ -1292,6 +1324,9 @@ class WorkflowApp(tk.Tk):
         kind = get_kind_for_slot(self.repo_root, sid)
         if kind in ENGAGEMENT_KINDS:
             self._ns["kind"].set(kind)
+        hint = f"← next open: {sid}  (kind: {kind})"
+        if hasattr(self, "_next_slot_hint"):
+            self._next_slot_hint.set(hint)
         self._log(f"Next open reserve slot: {sid} (tracker kind={kind})")
 
     def _on_slot_num_change(self, *_):
@@ -1874,6 +1909,27 @@ class WorkflowApp(tk.Tk):
                 text="CTF/lab: use New/Update Engagement tabs. No Procmon or event ingest here.")
         self._tools_kind_note.pack(anchor="w", pady=(6, 0))
 
+    def _tools_scaffold_writeup(self):
+        if not self.repo_root:
+            messagebox.showerror("No repo", "Browse to repo root first.")
+            return
+        sid = self._tools_ctx_sid.get().strip() if hasattr(self, "_tools_ctx_sid") else ""
+        if not sid:
+            messagebox.showerror("No sample", "Set a Context sample ID above first.")
+            return
+        kind = get_kind_for_slot(self.repo_root, sid)
+        dest = self.repo_root / "04_writeups" / f"{sid}.md"
+        extra = ["-SampleId", sid, "-Kind", kind]
+        if dest.exists():
+            if not messagebox.askyesno(
+                "Overwrite?",
+                f"04_writeups/{sid}.md already exists.\nOverwrite with {kind} template?",
+                icon="warning",
+            ):
+                return
+            extra.append("-Overwrite")
+        self._run_ps_script("scaffold_writeup.ps1", extra_args=extra)
+
     def _tools_scaffold_hunt_query(self):
         if not self.repo_root:
             messagebox.showerror("No repo", "Browse to repo root first.")
@@ -1996,6 +2052,7 @@ class WorkflowApp(tk.Tk):
             self._set["repo_root"].set(str(p))
         self._refresh_shot_slots()
         self._log(f"Repo root: {p}")
+        self.after(80, self._auto_detect_num)
 
     def _save_settings(self):
         analyst  = self._set["analyst"].get().strip()
