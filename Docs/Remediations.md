@@ -1,6 +1,6 @@
 ﻿Dev logs rules; REM-1, REM-2 any of these terms are the new 'updates' like "Update 1", all major logs entered here. Note; REM-1.2, REM-1.4 etc. are only for GitHub commits and pushing, never named here.
 
-**Session arc (2026-05-18 → 2026-05-22):** Tiers 2–5 → **REM-6**–**REM-7** → **REM-8** deferred tier → **REM-9** `04_writeups` overhaul §1–3 (target model, problems fixed, new layout).
+**Session arc (2026-05-18 → 2026-05-22):** Tiers 2–5 → **REM-6**–**REM-7** → **REM-8** deferred tier → **REM-9** `04_writeups` overhaul §1–4 (target model, problems fixed, new layout, template content design).
 
 ---
 
@@ -484,10 +484,49 @@ python .\30_scripts\workflow_gui.py --smoke-test
 - `_templates/` is read-only at engagement time — scaffold, then edit the copy
 - `_stub.md` bridges "I started this engagement" and "I wrote the full report"
 
+### §4 — Template overhaul (content design, all four kinds)
+
+**file.md (.1)**
+- Rewrote all `<FILL>` prompts with specific, actionable guidance (e.g. "group imports by theme: execution / injection / persistence / credential access / network / anti-analysis")
+- Merged "Provenance" and "Executive technical snapshot" out of top-level sections into §3 (scope) and §2 (quick-ref table) respectively
+- Added `<TARGET_IP>` / `<USERNAME>` placeholder convention to command blocks
+- Expanded MITRE table with Sub-technique column and data-source column
+- Added Sigma sketch template with YAML comments in §9 detection engineering
+- Added TLSH to Appendix A hash bundle; references to `20_notes/MITRE-coverage.md` and `detection-catalog.md`
+- Expanded final checklist to 8 items (MITRE consistency, distribution statement added)
+
+**ctf.md (.2)**
+- Fixed broken relative path: `../../20_notes/` → `../20_notes/` (scaffolded file lives in `04_writeups/`, not `_templates/`)
+- Renamed §3 "Recon summary" → "Challenge analysis" with category-specific guidance block (`fullpwn/web`, `rev/pwn`, `crypto`, `forensics`, `misc`)
+- Added "Dead-end hypotheses going in" sub-section to §3 to distinguish pre-solve eliminates from rabbit holes
+- Expanded §5 rabbit holes table with "Why it seemed right" and "Why it failed" columns
+- Added `course_url` → `platform` field; added `category` and `difficulty` to frontmatter
+- Added platform-specific publication policy table to §9 ethics (HTB / THM / picoCTF)
+- Added `20_notes/ctf-machine-index.md` cross-reference note in §1 document control
+- Expanded final checklist to 8 items (publication gate, target IP scrub, machine index update)
+
+**lab.md (.3)**
+- Fixed objectives rubric: replaced `[ ]` inside table cell backticks (non-rendering) with `yes / no` text column
+- Added `course_url`, `time_expected`, `time_actual` frontmatter fields
+- Added §7 "Skills delta" (before/after table; syncs to `20_notes/skills-coverage.md`)
+- Added `20_notes/lab-curriculum-map.md` cross-reference note in §1 document control
+- Added "Confusion that remains" sub-section to §6 reflection
+- Expanded §4 procedure table with "Why this step was non-obvious" column
+- Expanded final checklist to 8 items (answer key scrub, skills-coverage.md update added)
+
+**hunt.md (.4)**
+- Fixed broken relative paths: `../../20_notes/` and `../../45_hunt_queries/` → `../20_notes/` and `../45_hunt_queries/`
+- Restructured §2 hypothesis: added "Expected evidence if TRUE/FALSE" and "Inspired by" fields for traceability to malware/intel source
+- Added "Verdict" column to query log table (productive / dry / too noisy)
+- Added `outcome` frontmatter field (`true_positive | false_positive | inconclusive | no_data`)
+- Added Sigma sketch block to §7 detection engineering with YAML template and promote-to-45_hunt_queries note
+- Added "Follow-on hunt hypotheses" table to §8 recommendations
+- Added `20_notes/detection-catalog.md` cross-reference to §7
+- Expanded final checklist to 8 items (query_refs frontmatter, detection-catalog update, outcome consistency added)
+
 ### Not in REM-9 (planned follow-ups for `04` overhaul)
 
-- CTF/lab/hunt template body reviews (currently good but can be refined)
-- New validate rules specific to `04` content quality
+- New validate rules specific to `04` content quality (e.g. warn on unfilled `<FILL>` placeholders)
 
 ### Files touched (REM-9)
 
@@ -495,7 +534,10 @@ python .\30_scripts\workflow_gui.py --smoke-test
 |------|--------|
 | `04_writeups/README.md` | Target model rewrite (§1); scaffold + layout section (§2–3) |
 | `04_writeups/_templates/README.md` | Template index, `_stub.md` entry, updated scaffold commands |
-| `04_writeups/_templates/file.md` | Trimmed 18 → 12 sections |
+| `04_writeups/_templates/file.md` | Trimmed 18 → 12 sections; full prompt overhaul (§4) |
+| `04_writeups/_templates/ctf.md` | Path fix; category-aware §3; ethics table; checklist (§4) |
+| `04_writeups/_templates/lab.md` | Checkboxes fixed; skills delta §7; curriculum links (§4) |
+| `04_writeups/_templates/hunt.md` | Path fix; hypothesis structure; outcome field; Sigma sketch (§4) |
 | `04_writeups/_templates/_stub.md` | New minimal placeholder |
 | `04_writeups/sample_01.md` … `sample_50.md` | **Deleted** (50 pre-seeded stubs removed) |
 | `30_scripts/scaffold_writeup.ps1` | Added `stub` to `ValidateSet`; `_stub.md` path resolution |
