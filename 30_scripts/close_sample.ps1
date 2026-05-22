@@ -168,6 +168,16 @@ if ($kind -eq 'file') {
         Write-Check "SHOT_INDEX.txt hygiene checklist ticked"
         Write-Check "No HEIC files committed (convert to PNG)"
         Write-Host ""
+
+        $wuPath = Join-Path $root "04_writeups\$SampleId.md"
+        Write-Head "-- Optional: 04_writeups long-form report --"
+        if (Test-Path $wuPath) {
+            Write-Done "04_writeups\$SampleId.md already exists"
+        } else {
+            Write-Host "  Scaffold a portfolio-depth malware report (optional):" -ForegroundColor DarkGray
+            Write-Host "    powershell -ExecutionPolicy Bypass -File .\30_scripts\scaffold_writeup.ps1 -SampleId $SampleId -Kind file" -ForegroundColor DarkGray
+        }
+        Write-Host ""
     }
 }
 
@@ -211,6 +221,16 @@ if ($kind -eq 'ctf') {
         Write-Check "Run: 30_scripts\strip-exif.ps1"
         Write-Check "No VPN configs, instance IPs, or lab credentials in any committed file"
         Write-Host ""
+
+        $wuPath = Join-Path $root "04_writeups\$SampleId.md"
+        Write-Head "-- Optional: 04_writeups long-form report --"
+        if (Test-Path $wuPath) {
+            Write-Done "04_writeups\$SampleId.md already exists"
+        } else {
+            Write-Host "  Scaffold a blog-style walkthrough when machine is retired (optional):" -ForegroundColor DarkGray
+            Write-Host "    powershell -ExecutionPolicy Bypass -File .\30_scripts\scaffold_writeup.ps1 -SampleId $SampleId -Kind ctf" -ForegroundColor DarkGray
+        }
+        Write-Host ""
     }
 }
 
@@ -249,6 +269,16 @@ if ($kind -eq 'lab') {
         Write-Head "-- Evidence hygiene --"
         Write-Check "Run: 30_scripts\redact-check.ps1"
         Write-Check "No lab credentials, VPN keys, or instance IPs in any committed file"
+        Write-Host ""
+
+        $wuPath = Join-Path $root "04_writeups\$SampleId.md"
+        Write-Head "-- Optional: 04_writeups long-form report --"
+        if (Test-Path $wuPath) {
+            Write-Done "04_writeups\$SampleId.md already exists"
+        } else {
+            Write-Host "  Scaffold a curriculum / portfolio narrative (optional):" -ForegroundColor DarkGray
+            Write-Host "    powershell -ExecutionPolicy Bypass -File .\30_scripts\scaffold_writeup.ps1 -SampleId $SampleId -Kind lab" -ForegroundColor DarkGray
+        }
         Write-Host ""
     }
 }
@@ -293,6 +323,16 @@ if ($kind -eq 'hunt') {
         Write-Check "Run: 30_scripts\redact-check.ps1"
         Write-Check "No internal hostnames, user accounts, or org data in committed files"
         Write-Check "Run: 30_scripts\strip-exif.ps1"
+        Write-Host ""
+
+        $wuPath = Join-Path $root "04_writeups\$SampleId.md"
+        Write-Head "-- Optional: 04_writeups long-form report --"
+        if (Test-Path $wuPath) {
+            Write-Done "04_writeups\$SampleId.md already exists"
+        } else {
+            Write-Host "  Scaffold a detection-engineering narrative (optional):" -ForegroundColor DarkGray
+            Write-Host "    powershell -ExecutionPolicy Bypass -File .\30_scripts\scaffold_writeup.ps1 -SampleId $SampleId -Kind hunt" -ForegroundColor DarkGray
+        }
         Write-Host ""
     }
 }

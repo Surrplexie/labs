@@ -26,6 +26,8 @@
      17.  Lab completion depth       - warns if reviewed lab has thin step log or empty objectives.
      18.  Hunt collection depth      - warns if closed hunt has thin 01_static / no query evidence.
      19.  04_writeups kind match     - warns if optional 04 frontmatter engagement_kind != tracker.
+     20.  04_writeups hygiene        - warns if writeup_version missing; warns if CTF 04 has
+                                       public_writeup_safe: true but tracker status != writeup_done.
 
     Exit code 0 = all checks passed (WARNs allowed).
     Exit code 1 = one or more FAIL checks.
@@ -654,6 +656,53 @@ if ($writeupChecked -eq 0) {
     Write-Info "No 04_writeups files for active engagements (optional layer)."
 } elseif (-not $writeupKindIssues) {
     Write-Pass "All 04_writeups files match tracker engagement_kind"
+}
+
+# ---------------------------------------------------------------------------
+# CHECK 20: 04_writeups hygiene (writeup_version + public_writeup_safe gate)
+# ---------------------------------------------------------------------------
+Write-Section "20. 04_writeups hygiene"
+
+$wuHygieneIssues = $false
+$wuHygieneChecked = 0
+
+foreach ($row in $nonEmptyRows) {
+    $id          = $row.sample_id.Trim()
+    $writeupPath = Join-Path $Root "04_writeups\$id.md"
+    if (-not (Test-Path $writeupPath)) { continue }
+
+    $wuRaw = Get-Content $writeupPath -Raw -Encoding UTF8 -ErrorAction SilentlyContinue
+    if (-not (Has-Frontmatter -Content $wuRaw)) { continue }   # already caught by check 19
+
+    $wuHygieneChecked++
+
+    # Sub-check A: writeup_version must be present
+    $wuVersion = Get-FrontmatterValue -Content $wuRaw -Key 'writeup_version'
+    if ([string]::IsNullOrWhiteSpace($wuVersion)) {
+        Write-Warn "$id : 04_writeups missing writeup_version field (scaffold with scaffold_writeup.ps1 to fix)"
+        $wuHygieneIssues = $true
+    }
+
+    # Sub-check B: CTF public_writeup_safe: true only when tracker status = writeup_done
+    $kind = Get-EngagementKind -Row $row -Content $null
+    if ($kind -eq 'ctf') {
+        $pubSafe = Get-FrontmatterValue -Content $wuRaw -Key 'public_writeup_safe'
+        if ($pubSafe -eq 'true') {
+            $trackerStatus = $row.status.Trim().ToLower()
+            if ($trackerStatus -ne 'writeup_done') {
+                Write-Warn "$id : 04_writeups has public_writeup_safe: true but tracker status is '$trackerStatus' (expected writeup_done)"
+                $wuHygieneIssues = $true
+            } else {
+                Write-Pass "$id : 04_writeups public_writeup_safe: true and status is writeup_done"
+            }
+        }
+    }
+}
+
+if ($wuHygieneChecked -eq 0) {
+    Write-Info "No 04_writeups files to check for hygiene."
+} elseif (-not $wuHygieneIssues) {
+    Write-Pass "All 04_writeups files pass hygiene checks"
 }
 
 # ---------------------------------------------------------------------------

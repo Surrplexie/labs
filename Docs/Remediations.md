@@ -1,6 +1,6 @@
 ﻿Dev logs rules; REM-1, REM-2 any of these terms are the new 'updates' like "Update 1", all major logs entered here. Note; REM-1.2, REM-1.4 etc. are only for GitHub commits and pushing, never named here.
 
-**Session arc (2026-05-18 → 2026-05-22):** Tiers 2–5 → **REM-6**–**REM-7** → **REM-8** deferred tier → **REM-9** `04_writeups` overhaul §1–4 (target model, problems fixed, new layout, template content design).
+**Session arc (2026-05-18 → 2026-05-22):** Tiers 2–5 → **REM-6**–**REM-7** → **REM-8** deferred tier → **REM-9** `04_writeups` overhaul §1–4 → **REM-10** §5–6 (migration utility, close hint, writeup index, validate check 20).
 
 ---
 
@@ -544,23 +544,75 @@ python .\30_scripts\workflow_gui.py --smoke-test
 | `ENGAGEMENTS.md` | Optional `04` section aligned to target model |
 | `Docs/Remediations.md` | This log |
 
+---
+
+## REM-10
+
+**When:** 2026-05-22
+
+**What:** `04_writeups` overhaul §5–6 — one-time migration utility + workflow automation (W1 + W2).
+
+### §5 — One-time migration (completed)
+
+The 50 pre-seeded stubs were already deleted in REM-9. The migration utility formalizes future bulk management:
+
+- **`30_scripts/reset_writeup_stubs.ps1`** (new):
+  - `-Mode remove` — delete `sample_*.md` files that are stubs (line count ≤ `-Threshold` or `status: placeholder`); skips files with real content
+  - `-Mode stub` — create `_stub.md` placeholder for every active slot with no existing `04` file
+  - `-Mode kind-from-tracker` — re-scaffold stubs whose `engagement_kind` doesn't match tracker; skips real-content files
+  - `-DryRun` — print what would change without touching files
+  - `-Threshold` — configurable line-count cut-off (default: 20)
+
+### §6 — Workflow automation
+
+#### W1: Low effort, high value
+
+- **`close_sample.ps1`** — added `-- Optional: 04_writeups long-form report --` hint block to all four final-status closings (`file: done`, `ctf: writeup_done`, `lab: reviewed`, `hunt: closed`). If `04_writeups/sample_XX.md` already exists, shows `[x]` done. If absent, prints the exact `scaffold_writeup.ps1` command for that kind.
+
+#### W2: Medium
+
+- **`30_scripts/update_writeup_index.ps1`** (new):
+  - Scans `04_writeups/sample_*.md`, reads frontmatter (`engagement_kind`, `title`, `writeup_version`, `status`, `public_writeup_safe`, `date_draft`, `date_final`)
+  - Calculates depth (`stub` ≤ 20 lines / `short` 21–100 / `full` > 100)
+  - Writes `04_writeups/INDEX.md` with a table + depth legend + scaffold commands
+  - `-DryRun` prints to console instead of writing
+- **`04_writeups/INDEX.md`** (new, auto-generated): starts empty (0 rows) — populated as real writeups are added
+- **`validate.ps1` check 20** (new, WARN only):
+  - Sub-check A: WARN if any existing `04_writeups` file is missing `writeup_version` field
+  - Sub-check B: WARN if a CTF `04_writeups` file has `public_writeup_safe: true` but tracker `status != writeup_done` (prevents accidental publication of active-machine writeups)
+
+### Validate
+
+- **20 checks**, 15 PASS / 0 WARN / 0 FAIL on current repo state.
+
+### Files touched (REM-10)
+
+| File | Change |
+|------|--------|
+| `30_scripts/reset_writeup_stubs.ps1` | New — migration utility (§5) |
+| `30_scripts/close_sample.ps1` | Writeup scaffold hint on all 4 final statuses |
+| `30_scripts/update_writeup_index.ps1` | New — regenerates `04_writeups/INDEX.md` |
+| `04_writeups/INDEX.md` | New — auto-generated index (0 rows initially) |
+| `30_scripts/validate.ps1` | Check 20: writeup_version + public_writeup_safe gate |
+| `Docs/Remediations.md` | This log |
+
 ### Open follow-ups
 
 | Item | Status |
 |------|--------|
 | **GitHub Release `v3.1.2`** | `tag_release.ps1 -Tag v3.1.2 -Push` when ready |
-| **`04` overhaul §4+** | Template body refinements, CTF/lab/hunt polish |
+| **`04` overhaul §7+ (integration)** | export-summary fields, main INDEX column, GUI writeup tab |
 
-### Quick reference — files touched across REM-2–9
+### Quick reference — files touched across REM-2–10
 
 | Area | Key paths |
 |------|-----------|
-| Writeups | `04_writeups/README.md`, `_templates/README.md`, `_templates/*`, `scaffold_writeup.ps1` (REM-9: docs) |
+| Writeups | `04_writeups/README.md`, `_templates/*`, `INDEX.md`, `scaffold_writeup.ps1`, `reset_writeup_stubs.ps1`, `update_writeup_index.ps1` |
 | Hunt queries | `45_hunt_queries/`, `30_scripts/new_hunt_query.ps1` |
 | Notes | `20_notes/ctf-machine-index.md`, `lab-curriculum-map.md`, `detection-catalog.md`, `ctf-patterns/` |
 | GUI | `30_scripts/workflow_gui.py` (v3.1.2; smoke-test) |
 | Tracker / index | `samples_tracker.csv`, `INDEX.md` (REM-6) |
-| Validate | `30_scripts/validate.ps1` (checks 16–19) |
+| Validate | `30_scripts/validate.ps1` (checks 16–20) |
 | Build / CI | `build_exe.ps1` (sign, `-Clean`), `smoke_gui.ps1`, `integrity.yml` |
 | Deferrals | `Docs/DEFERRED.md` |
 | Identity docs | `README.md`, `ENGAGEMENTS.md`, `WORKFLOW.md`, `30_scripts/README.md`, `WORKFLOW-GUI.md` |
