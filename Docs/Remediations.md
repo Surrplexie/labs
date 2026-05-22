@@ -1,6 +1,6 @@
 Dev logs rules; REM-1, REM-2 any of these terms are the new 'updates' like "Update 1", all major logs entered here. Note; REM-1.2, REM-1.4 etc. are only for GitHub commits and pushing, never named here.
 
-**Session arc (2026-05-18 → 2026-05-20):** Tiers 2–5 → **REM-6**–**REM-7** → **REM-8** deferred tier (smoke CI, optional sign, `DEFERRED.md`).
+**Session arc (2026-05-18 → 2026-05-22):** Tiers 2–5 → **REM-6**–**REM-7** → **REM-8** deferred tier → **REM-9** `04_writeups` target model (docs only).
 
 ---
 
@@ -431,21 +431,55 @@ python .\30_scripts\workflow_gui.py --smoke-test
 
 ## REM-9
 
-**When:** —
+**When:** 2026-05-22
 
-**What:** *Reserved — next remediation entry.*
+**What:** **`04_writeups` overhaul — §1 Target model** (documentation only; no script or template structure changes).
+
+### Target model (what `04` is for)
+
+- **Two-layer contract:** `03_findings` = required, indexed, validated, automation-facing; `04_writeups` = optional, human-facing narrative that summarizes and links back — not a duplicate of phase logs.
+- **Per-kind guidance** (`file` / `ctf` / `lab` / `hunt`): each has **write `04` when** vs **skip when** plus one line on what `04` is *not* (e.g. CTF: no raw flags, no command paste from `02_dynamic`; hunt: reusable queries → `45_hunt_queries/`).
+- **CTF ethics:** `04` walkthrough only when machine is **retired** / writeup permitted — called out explicitly in the CTF table.
+- **Relationship diagram:** `03` → `INDEX.md`; `04` → `evidence_index` back to `00`–`03` + `50_screenshots`.
+
+### Documentation updated
+
+- **`04_writeups/README.md`** — full rewrite: two-layer table, four per-kind decision tables, scaffold commands (`-WithLongWriteup`, `-Overwrite` for pre-seeded slots), evidence rules table, validation (check 19 only when file exists), folder structure diagram; removed duplicate check-19 paragraph.
+- **`04_writeups/_templates/README.md`** — key sections per template, `engagement_kind` → template map, scaffold commands, “edit templates for structure only” note.
+- **`ENGAGEMENTS.md`** — optional `04` section replaced: two-layer model, per-kind when/skip table, updated scaffold examples (`-SampleId`, `-Overwrite` on CTF/lab/hunt slots).
+
+### Hygiene / validate
+
+- **Flag-pattern false positives:** README evidence examples used literal `HTB{…}`-style strings → `validate.ps1` check 12 WARNs; reworded to generic “challenge flag strings” → **17 PASS, 0 WARN, 0 FAIL**.
+
+### Not in REM-9 (planned follow-ups for `04` overhaul)
+
+- Folder layout / naming changes beyond docs
+- Template body rewrites (`file.md`, `ctf.md`, `lab.md`, `hunt.md`)
+- New validate rules or `scaffold_writeup.ps1` behavior
+- Pre-seeded `sample_01`–`sample_50` bulk re-scaffold
+
+### Files touched (REM-9)
+
+| File | Change |
+|------|--------|
+| `04_writeups/README.md` | Target model rewrite |
+| `04_writeups/_templates/README.md` | Template index + scaffold guidance |
+| `ENGAGEMENTS.md` | Optional `04` section aligned to target model |
+| `Docs/Remediations.md` | This log |
 
 ### Open follow-ups
 
 | Item | Status |
 |------|--------|
 | **GitHub Release `v3.1.2`** | `tag_release.ps1 -Tag v3.1.2 -Push` when ready |
+| **`04` overhaul §2+** | Layout, templates, automation — after target model |
 
-### Quick reference — files touched across REM-2–8
+### Quick reference — files touched across REM-2–9
 
 | Area | Key paths |
 |------|-----------|
-| Writeups | `04_writeups/_templates/*`, `30_scripts/scaffold_writeup.ps1` |
+| Writeups | `04_writeups/README.md`, `_templates/README.md`, `_templates/*`, `scaffold_writeup.ps1` (REM-9: docs) |
 | Hunt queries | `45_hunt_queries/`, `30_scripts/new_hunt_query.ps1` |
 | Notes | `20_notes/ctf-machine-index.md`, `lab-curriculum-map.md`, `detection-catalog.md`, `ctf-patterns/` |
 | GUI | `30_scripts/workflow_gui.py` (v3.1.2; smoke-test) |

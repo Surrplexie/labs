@@ -195,25 +195,45 @@ powershell -ExecutionPolicy Bypass -File .\30_scripts\new_engagement.ps1 -NextNu
 
 ### Optional long-form report (`04_writeups`)
 
-`03_findings` is the required outcome per kind. Use `04_writeups` only when you want a portfolio-deep narrative.
+`03_findings` is the required outcome per kind — indexed, validated, exported to `INDEX.md`.
+`04_writeups` is an **optional second layer**: a narrative written for a human reader, not for automation.
 
-| Kind | Template | Scaffold |
-|------|----------|----------|
-| `file` | [`04_writeups/_templates/file.md`](./04_writeups/_templates/file.md) | `scaffold_writeup.ps1 -Kind file` |
-| `ctf` | [`ctf.md`](./04_writeups/_templates/ctf.md) | `-Kind ctf` |
-| `lab` | [`lab.md`](./04_writeups/_templates/lab.md) | `-Kind lab` |
-| `hunt` | [`hunt.md`](./04_writeups/_templates/hunt.md) | `-Kind hunt` |
+#### Two-layer model
+
+| Layer | File | What it contains |
+|-------|------|-----------------|
+| **Required** | `03_findings/sample_XX.md` | YAML frontmatter, verdict/outcome, IOC slice, portfolio blurb |
+| **Optional** | `04_writeups/sample_XX.md` | Story arc, teaching notes, rubric, detection write-up |
+
+#### When to write a `04` per kind
+
+| Kind | Write `04` when | Skip when |
+|------|-----------------|-----------|
+| `file` | Employer-grade malware report: MITRE narrative, detection ideas, limitations | `03` blurb + IOC table is enough |
+| `ctf` | Blog-style walkthrough: story arc, rabbit holes — machine is **retired** | Challenge still active or `03` covers it |
+| `lab` | Portfolio rubric / curriculum narrative; cross-link to malware work | Brief exercise; `03` reflection is enough |
+| `hunt` | Detection-engineering depth: query tuning, FP reasoning, Sigma sketch | `03` outcome + `45_hunt_queries/` covers it |
+
+`04` is **not** a duplicate of phase logs. It summarises and links back via `evidence_index`.
+
+#### Scaffold
 
 ```powershell
-# With new engagement
+# At engagement creation
 powershell -ExecutionPolicy Bypass -File .\30_scripts\new_engagement.ps1 `
-    -NextNumber 7 -Kind ctf -Platform "HackTheBox" -Title "Lame" -WithLongWriteup
+    -NextNumber 37 -Kind ctf -Platform "HackTheBox" -Title "Lame" -WithLongWriteup
 
-# Standalone (infers kind from tracker when -Kind omitted)
-powershell -ExecutionPolicy Bypass -File .\30_scripts\scaffold_writeup.ps1 -NextNumber 7 -Kind ctf -Overwrite
+# After the fact (infers kind from tracker when -Kind omitted)
+powershell -ExecutionPolicy Bypass -File .\30_scripts\scaffold_writeup.ps1 -SampleId sample_37
+
+# Replace a pre-seeded file-outline on a CTF/lab/hunt slot
+powershell -ExecutionPolicy Bypass -File .\30_scripts\scaffold_writeup.ps1 `
+    -SampleId sample_37 -Kind ctf -Overwrite
 ```
 
-Pre-seeded `04_writeups/sample_01`–`sample_50` files are **file**-oriented until you scaffold with `-Overwrite`. See [`04_writeups/README.md`](./04_writeups/README.md).
+Pre-seeded `sample_01`–`sample_50` files are **file-malware-shaped**. On first real use of any CTF/lab/hunt slot, run `scaffold_writeup.ps1 -Overwrite` to replace with the correct template.
+
+Full model and evidence rules: [`04_writeups/README.md`](./04_writeups/README.md).
 
 ---
 
