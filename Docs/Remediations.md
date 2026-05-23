@@ -1,6 +1,6 @@
 ﻿Dev logs rules; REM-1, REM-2 any of these terms are the new 'updates' like "Update 1", all major logs entered here. Note; REM-1.2, REM-1.4 etc. are only for GitHub commits and pushing, never named here.
 
-**Session arc (2026-05-18 → 2026-05-22):** Tiers 2–5 → **REM-6**–**REM-7** → **REM-8** deferred tier → **REM-9** `04_writeups` overhaul §1–4 → **REM-10** §5–6 (migration utility, close hint, writeup index, validate check 20).
+**Session arc (2026-05-18 → 2026-05-22):** Tiers 2–5 → **REM-6**–**REM-7** → **REM-8** deferred tier → **REM-9** `04_writeups` overhaul §1–4 → **REM-10** §5–6 (migration utility, close hint, writeup index, validate check 20) → **REM-11** on-demand slot model (196 stubs deleted, `reseed_empty_slots` retired).
 
 ---
 
@@ -616,3 +616,59 @@ The 50 pre-seeded stubs were already deleted in REM-9. The migration utility for
 | Build / CI | `build_exe.ps1` (sign, `-Clean`), `smoke_gui.ps1`, `integrity.yml` |
 | Deferrals | `Docs/DEFERRED.md` |
 | Identity docs | `README.md`, `ENGAGEMENTS.md`, `WORKFLOW.md`, `30_scripts/README.md`, `WORKFLOW-GUI.md` |
+
+---
+
+## REM-11
+
+**When:** 2026-05-22
+
+**What:** On-demand slot model — delete 196 pre-seeded phase stubs from all 4 phase folders; retire `reseed_empty_slots.ps1`.
+
+### Problem
+
+`reseed_empty_slots.ps1` had pre-seeded `sample_02.md` through `sample_50.md` in **all four** phase folders (`00_original`, `01_static`, `02_dynamic`, `03_findings`) — 196 unfilled stub files. This caused:
+- Repo noise (messy file browsers, large diffs)
+- Wrong `engagement_kind` on CTF/lab/hunt band slots (all stubs were `file`-shaped)
+- False sense that slots were "ready" — they were empty templates
+
+### Fix
+
+- **Deleted all 196 stub files** (`sample_02.md`–`sample_50.md`) from `00_original`, `01_static`, `02_dynamic`, `03_findings`
+- **`sample_01.md` kept** in all 4 phase folders (the only real engagement)
+- **`reseed_empty_slots.ps1` retired**: now exits immediately with a deprecation message and instructions for the on-demand approach. `--Force` override kept for edge cases.
+
+### How new slots are created now
+
+Everything is on-demand:
+
+```
+GUI:    workflow_gui.exe -> "New Engagement" tab -> kind + title -> CREATE ENGAGEMENT
+        (auto-detect suggests next empty slot; creates all 4 phase files + tracker row)
+
+Script: new_engagement.ps1 -NextNumber <N> -Kind <file|ctf|lab|hunt> [-Title ...] [-WithLongWriteup]
+```
+
+The GUI's "Auto-detect" button reads `samples_tracker.csv` for the first `status: empty` row — correctly suggests slot 2 as the next available slot.
+
+### Validate
+
+- 15 PASS / 0 WARN / 0 FAIL after deletion (tracker reserve rows for sample_02-50 remain, validate only checks non-empty/active slots).
+
+### Files touched (REM-11)
+
+| File | Change |
+|------|--------|
+| `00_original/sample_02.md` – `sample_50.md` | **Deleted** (49 stubs) |
+| `01_static/sample_02.md` – `sample_50.md` | **Deleted** (49 stubs) |
+| `02_dynamic/sample_02.md` – `sample_50.md` | **Deleted** (49 stubs) |
+| `03_findings/sample_02.md` – `sample_50.md` | **Deleted** (49 stubs) |
+| `30_scripts/reseed_empty_slots.ps1` | Retired — exits with deprecation message; `-Force` override |
+| `Docs/Remediations.md` | This log |
+
+### Open follow-ups
+
+| Item | Status |
+|------|--------|
+| **GitHub Release `v3.1.2`** | `tag_release.ps1 -Tag v3.1.2 -Push` when ready |
+| **`04` overhaul §7+** | export-summary fields, main INDEX column |
