@@ -30,6 +30,7 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+. (Join-Path $PSScriptRoot '_paths.ps1')
 
 $writeupDir = Join-Path $Root '04_writeups'
 $outPath    = Join-Path $writeupDir 'INDEX.md'
@@ -63,7 +64,20 @@ function Get-YamlValue {
 # ---------------------------------------------------------------------------
 # Scan writeup files
 # ---------------------------------------------------------------------------
-$files = Get-ChildItem $writeupDir -Filter 'sample_*.md' | Sort-Object Name
+$files = @()
+Get-ChildItem -LiteralPath $Root -Directory -ErrorAction SilentlyContinue |
+    Where-Object { $_.Name -match '^LAB\d+' } |
+    ForEach-Object {
+        $d = Join-Path $_.FullName '04_writeups'
+        if (Test-Path $d) {
+            $files += Get-ChildItem $d -Filter 'sample_*.md' -ErrorAction SilentlyContinue
+        }
+    }
+$legacyWriteups = Join-Path $Root '04_writeups'
+if (Test-Path $legacyWriteups) {
+    $files += Get-ChildItem $legacyWriteups -Filter 'sample_*.md' -ErrorAction SilentlyContinue
+}
+$files = @($files | Sort-Object FullName)
 
 $rows = @()
 foreach ($f in $files) {
@@ -99,8 +113,12 @@ foreach ($f in $files) {
     $lineCount = (Get-Content $f.FullName -Encoding UTF8 | Measure-Object -Line).Lines
     $depth = if ($lineCount -le 20) { 'stub' } elseif ($lineCount -le 100) { 'short' } else { 'full' }
 
+    $rootResolved = (Resolve-Path $Root).Path
+    $relFromRoot  = $f.FullName.Substring($rootResolved.Length).TrimStart('\', '/').Replace('\', '/')
+    $slotLink     = "[$id](../$relFromRoot)"
+
     $rows += [PSCustomObject]@{
-        Slot       = "[$id](./$($f.Name))"
+        Slot       = $slotLink
         Kind       = $kind
         Depth      = $depth
         Title      = $title

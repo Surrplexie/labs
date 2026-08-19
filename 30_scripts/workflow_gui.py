@@ -43,12 +43,14 @@ VERDICTS     = ["suspicious", "malicious", "benign", "unknown"]
 CONFIDENCES  = ["high", "medium-high", "medium", "low"]
 SAMPLE_TYPES = ["PE", "Office", "Script", "Archive"]
 
-ENGAGEMENT_KINDS = ["file", "ctf", "lab", "hunt"]
+ENGAGEMENT_KINDS = ["file", "ctf", "lab", "school", "homelab", "hunt"]
 KIND_STATUSES = {
-    "file":  ["queued", "static", "dynamic", "done"],
-    "ctf":   ["assigned", "recon", "stuck", "solved", "writeup_done"],
-    "lab":   ["not_started", "in_progress", "objectives_met", "reviewed"],
-    "hunt":  ["scoped", "collecting", "analyzing", "closed"],
+    "file":    ["queued", "static", "dynamic", "done"],
+    "ctf":     ["assigned", "recon", "stuck", "solved", "writeup_done"],
+    "lab":     ["not_started", "in_progress", "objectives_met", "reviewed"],
+    "school":  ["not_started", "in_progress", "objectives_met", "reviewed"],
+    "homelab": ["planned", "building", "running", "documented"],
+    "hunt":    ["scoped", "collecting", "analyzing", "closed"],
 }
 ALL_STATUSES = sorted({s for ss in KIND_STATUSES.values() for s in ss})
 
@@ -73,15 +75,26 @@ TYPE_TAG_HINTS = {
     "Archive": "archive, container",
 }
 KIND_TAG_HINTS = {
-    "ctf":  "ctf",
-    "lab":  "lab, hands-on",
-    "hunt": "hunt, detection, siem",
+    "ctf":     "ctf",
+    "lab":     "lab, hands-on",
+    "school":  "school, coursework",
+    "homelab": "homelab",
+    "hunt":    "hunt, detection, siem",
 }
 KIND_SKILL_HINTS = {
-    "ctf":  "e.g. web-enumeration, privilege-escalation, buffer-overflow",
-    "lab":  "e.g. linux-fundamentals, network-scanning, active-directory",
-    "hunt": "e.g. threat-hunting, siem-queries, log-analysis, sigma-rules",
+    "ctf":     "e.g. web-enumeration, privilege-escalation, buffer-overflow",
+    "lab":     "e.g. linux-fundamentals, network-scanning, active-directory",
+    "school":  "e.g. assembly, networking, security-plus",
+    "homelab": "e.g. homelab, virtualization, detection-engineering",
+    "hunt":    "e.g. threat-hunting, siem-queries, log-analysis, sigma-rules",
 }
+
+SCHOOL_COURSES = [
+    "CS50", "CompTIA Security+ SY0-701", "Cybersecurity 101",
+    "Assembly Language", "ENG-201 English 1",
+    "ITSUP-101 Computer Info Systems Fundamentals",
+    "ITSUP-155 IT Career Skills", "Security Club",
+]
 
 # Dark theme
 C_BG     = "#1e1e2e"
@@ -196,8 +209,52 @@ def get_kind_for_slot(root: Path, sid: str) -> str:
     return "file"
 
 
+LAB_DIR_RE = re.compile(r"^LAB\d+", re.I)
+
+
+def find_lab_dir(root: Path, sid: str) -> Path | None:
+    """Resolve LAB{NN}_{slug} for a slot. Falls back to repo root (legacy layout)."""
+    for row in read_tracker_rows(root):
+        if row.get("sample_id", "").strip() != sid:
+            continue
+        lf = row.get("lab_folder", "").strip()
+        if lf:
+            p = root / lf
+            if p.is_dir():
+                return p
+        break
+    try:
+        for p in root.iterdir():
+            if p.is_dir() and LAB_DIR_RE.match(p.name):
+                if (p / "03_findings" / f"{sid}.md").exists() or (
+                    p / "00_original" / f"{sid}.md"
+                ).exists():
+                    return p
+    except OSError:
+        pass
+    if (root / "03_findings" / f"{sid}.md").exists():
+        return root
+    if (root / "00_original" / f"{sid}.md").exists():
+        return root
+    return None
+
+
+def phase_file(root: Path, sid: str, phase: str) -> Path:
+    lab = find_lab_dir(root, sid)
+    if lab:
+        return lab / phase / f"{sid}.md"
+    return root / phase / f"{sid}.md"
+
+
+def screenshot_dir(root: Path, sid: str) -> Path:
+    lab = find_lab_dir(root, sid)
+    if lab is not None and lab != root:
+        return lab / "50_screenshots"
+    return root / "50_screenshots" / sid
+
+
 def expected_engagement_kind_for_slot(n: int) -> str | None:
-    """Tier-1 slot bands (convention, not enforced). None for slots 51-99."""
+    """Slot bands (convention, not enforced)."""
     if 1 <= n <= 30:
         return "file"
     if 31 <= n <= 40:
@@ -206,6 +263,10 @@ def expected_engagement_kind_for_slot(n: int) -> str | None:
         return "lab"
     if 46 <= n <= 50:
         return "hunt"
+    if 51 <= n <= 70:
+        return "school"
+    if 71 <= n <= 85:
+        return "homelab"
     return None
 
 def read_frontmatter(findings_path: Path) -> dict:
@@ -522,7 +583,7 @@ class WorkflowApp(tk.Tk):
         _lbl(frame, "Engagement kind", R)
         self._ns["kind"] = tk.StringVar(value="file")
         _combo(frame, self._ns["kind"], ENGAGEMENT_KINDS, R)
-        _hint(frame, "file=malware  ctf=challenge  lab=training  hunt=detection", R)
+        _hint(frame, "file=malware  ctf=challenge  lab=platform  school=class  homelab=home  hunt=detection", R)
         self._ns["kind"].trace_add("write", self._on_kind_change)
         R += 1
 
@@ -1168,7 +1229,7 @@ class WorkflowApp(tk.Tk):
         kind    = self._ns.get("kind", tk.StringVar()).get()
         is_file = kind == "file"
         is_ctf  = kind == "ctf"
-        is_lab  = kind == "lab"
+        is_lab  = kind in ("lab", "school", "homelab")
         is_hunt = kind == "hunt"
         is_non_file = not is_file
 
@@ -1213,9 +1274,23 @@ class WorkflowApp(tk.Tk):
                   ):
             self._show_ns(k, is_lab)
 
-        # Lab platform row (lab uses same platform widget as ctf)
+        # Lab platform row (lab / school / homelab uses same platform widget as ctf)
         for k in ("_plat_lbl", "_plat_combo"):
             self._show_ns(k, is_ctf or is_lab)
+
+        plat = self._ns.get("_plat_combo")
+        if plat is not None:
+            try:
+                if kind == "school":
+                    plat.configure(values=SCHOOL_COURSES)
+                elif kind == "ctf":
+                    plat.configure(values=CTF_PLATFORMS)
+                else:
+                    plat.configure(values=CTF_PLATFORMS + [
+                        p for p in LAB_PLATFORMS if p not in CTF_PLATFORMS
+                    ])
+            except Exception:
+                pass
 
         # Hunt fields
         for k in ("_hyp_lbl", "_hyp_entry",
@@ -1248,10 +1323,12 @@ class WorkflowApp(tk.Tk):
                 sv.set(KIND_SKILL_HINTS[kind])
 
         lbl = {
-            "file": "   CREATE FILE ENGAGEMENT   ",
-            "ctf":  "   CREATE CTF ENGAGEMENT   ",
-            "lab":  "   CREATE LAB ENGAGEMENT   ",
-            "hunt": "   CREATE HUNT ENGAGEMENT   ",
+            "file":    "   CREATE FILE ENGAGEMENT   ",
+            "ctf":     "   CREATE CTF ENGAGEMENT   ",
+            "lab":     "   CREATE LAB ENGAGEMENT   ",
+            "school":  "   CREATE SCHOOL ENGAGEMENT   ",
+            "homelab": "   CREATE HOMELAB ENGAGEMENT   ",
+            "hunt":    "   CREATE HUNT ENGAGEMENT   ",
         }.get(kind, "   CREATE ENGAGEMENT   ")
         btn = self._ns.get("_create_btn")
         if btn:
@@ -1332,7 +1409,7 @@ class WorkflowApp(tk.Tk):
             proceed = messagebox.askyesno(
                 "Slot band mismatch",
                 f"{sid} is in the {expected} band (01-30=file, 31-40=ctf, "
-                f"41-45=lab, 46-50=hunt) but kind is '{kind}'.\n\n"
+                f"41-45=lab, 46-50=hunt, 51-70=school, 71-85=homelab) but kind is '{kind}'.\n\n"
                 "Create anyway?",
                 icon="warning",
             )
@@ -1360,6 +1437,13 @@ class WorkflowApp(tk.Tk):
         if kind == "file": args += ["-Type", stype]
         if title:          args += ["-Title", title]
         if platform:       args += ["-Platform", platform]
+        course = ""
+        if "lab_course" in self._ns:
+            course = self._ns["lab_course"].get().strip()
+        if course:
+            args += ["-Course", course]
+        elif kind in ("school", "lab", "homelab") and platform:
+            args += ["-Course", platform]
         if self._ns.get("with_long_writeup", tk.BooleanVar()).get():
             args += ["-WithLongWriteup"]
 
@@ -1399,7 +1483,7 @@ class WorkflowApp(tk.Tk):
 
     def _patch_after_create(self, sid: str, kind: str) -> None:
         """Patch 03_findings frontmatter with form values after scaffold."""
-        findings = self.repo_root / "03_findings" / f"{sid}.md"
+        findings = phase_file(self.repo_root, sid, "03_findings")
         if not findings.exists():
             return
 
@@ -1601,7 +1685,7 @@ class WorkflowApp(tk.Tk):
             messagebox.showinfo("Nothing to do", "Add images first.")
             return
 
-        dest_dir = self.repo_root / "50_screenshots" / slot
+        dest_dir = screenshot_dir(self.repo_root, slot)
         dest_dir.mkdir(parents=True, exist_ok=True)
 
         # Determine starting number
@@ -1672,7 +1756,7 @@ class WorkflowApp(tk.Tk):
                 "No captions set. Set captions first.")
 
     def _shot_write_index_entries(self, slot: str, entries: list) -> None:
-        index_path = self.repo_root / "50_screenshots" / slot / "SHOT_INDEX.txt"
+        index_path = screenshot_dir(self.repo_root, slot) / "SHOT_INDEX.txt"
         if not index_path.exists():
             v = {"sample_id": slot, "analyst": self.cfg.get("analyst", "Surrplexie")}
             index_path.write_text(build_shot_index(v), encoding="utf-8")
@@ -1721,7 +1805,7 @@ class WorkflowApp(tk.Tk):
 
         is_file = kind == "file"
         is_ctf  = kind == "ctf"
-        is_lab  = kind == "lab"
+        is_lab  = kind in ("lab", "school", "homelab")
         is_hunt = kind == "hunt"
 
         def sv(key, visible):
@@ -1755,7 +1839,7 @@ class WorkflowApp(tk.Tk):
         sid = self._up["id"].get().strip()
         if not sid or not self.repo_root:
             return
-        path = self.repo_root / "03_findings" / f"{sid}.md"
+        path = phase_file(self.repo_root, sid, "03_findings")
         fm = read_frontmatter(path)
         if not fm:
             self._log(f"No frontmatter in {path.name}"); return
@@ -1824,7 +1908,7 @@ class WorkflowApp(tk.Tk):
             if skills_raw:
                 updates["skills"] = [s.strip() for s in skills_raw.split(",") if s.strip()]
 
-        findings = self.repo_root / "03_findings" / f"{sid}.md"
+        findings = phase_file(self.repo_root, sid, "03_findings")
         if findings.exists():
             patch_frontmatter(findings, updates)
 

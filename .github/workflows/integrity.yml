@@ -59,6 +59,7 @@ jobs:
         shell: pwsh
         run: |
           $root      = "${{ github.workspace }}"
+          . "$root\30_scripts\_paths.ps1"
           $tracker   = Import-Csv "$root\samples_tracker.csv"
           $active    = $tracker | Where-Object { $_.status.Trim().ToLower() -ne 'empty' }
           $missing   = @()
@@ -68,7 +69,7 @@ jobs:
             $id   = $row.sample_id.Trim()
 
             # schema_version check
-            $path = "$root\03_findings\$id.md"
+            $path = Get-PhaseFilePath -Root $root -SampleId $id -Phase '03_findings' -TrackerRow $row
             if (Test-Path $path) {
               $raw = Get-Content $path -Raw -Encoding UTF8
               if ($raw -notmatch '(?m)^schema_version\s*:\s*[12]') {

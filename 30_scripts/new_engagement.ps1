@@ -12,10 +12,19 @@
     04_writeups/_templates/{kind}.md (see scaffold_writeup.ps1).
 
     Kinds:
-      file   - malware/artifact triage (PE / Office / Script / Archive)
-      ctf    - CTF or HackTheBox/TryHackMe challenge
-      lab    - guided course / training lab / module
-      hunt   - hypothesis-driven threat detection exercise
+      file    - malware/artifact triage (PE / Office / Script / Archive)
+      ctf     - CTF or HackTheBox/TryHackMe challenge
+      lab     - guided course / training lab / module (platforms)
+      hunt    - hypothesis-driven threat detection exercise
+      school  - class / coursework (CS50, CompTIA, ENG-201, club)
+      homelab - home range / self-built lab
+
+.PARAMETER Kind
+    Engagement kind. One of: file (default), ctf, lab, hunt, school, homelab.
+
+.PARAMETER Course
+    Downloads\Notes course folder name (e.g. "CS50"). Also fills -Platform if empty.
+    Runs link_notes.ps1 after scaffold.
 
     Phase folder meaning by kind:
       file:  acquisition -> static triage -> dynamic triage -> findings/IOCs
@@ -67,7 +76,7 @@ param(
     [ValidateRange(1, 99)]
     [int]$NextNumber,
 
-    [ValidateSet('file', 'ctf', 'lab', 'hunt')]
+    [ValidateSet('file', 'ctf', 'lab', 'hunt', 'school', 'homelab')]
     [string]$Kind = 'file',
 
     [ValidateSet('PE', 'Office', 'Script', 'Archive')]
@@ -76,6 +85,7 @@ param(
     [string]$Analyst = 'Surrplexie',
     [string]$Platform = '',
     [string]$Title    = '',
+    [string]$Course   = '',
 
     [switch]$OverwriteEmpty,
     [switch]$ReserveOnly,
@@ -83,27 +93,23 @@ param(
 )
 
 $root = Split-Path -Parent $PSScriptRoot
-if (-not (Test-Path (Join-Path $root '00_original'))) {
-    Write-Error "Cannot find 00_original under repo root: $root"
+. (Join-Path $PSScriptRoot '_paths.ps1')
+if (-not (Test-Path (Join-Path $root 'samples_tracker.csv'))) {
+    Write-Error "Cannot find samples_tracker.csv under repo root: $root"
     exit 1
 }
 
 $id   = 'sample_{0:D2}' -f $NextNumber
 $date = Get-Date -Format 'yyyy-MM-dd'
-
-function Get-ExpectedEngagementKindForSlot {
-    param([int]$Number)
-    if ($Number -ge 1 -and $Number -le 30)  { return 'file' }
-    if ($Number -ge 31 -and $Number -le 40) { return 'ctf' }
-    if ($Number -ge 41 -and $Number -le 45) { return 'lab' }
-    if ($Number -ge 46 -and $Number -le 50) { return 'hunt' }
-    return $null
-}
+if ($Course -and -not $Platform) { $Platform = $Course }
+if ($Course -and -not $Title)    { $Title = $Course }
+$labName = Get-LabFolderName -Number $NextNumber -Title $Title
+$labDir  = Join-Path $root $labName
 
 $expectedKind = Get-ExpectedEngagementKindForSlot -Number $NextNumber
 if ($expectedKind -and $Kind -ne $expectedKind) {
     Write-Warning @"
-Slot convention: $id is in the $expectedKind band (01-30=file, 31-40=ctf, 41-45=lab, 46-50=hunt) but -Kind is '$Kind'. Continuing anyway.
+Slot convention: $id is in the $expectedKind band (01-30=file, 31-40=ctf, 41-45=lab, 46-50=hunt, 51-70=school, 71-85=homelab) but -Kind is '$Kind'. Continuing anyway.
 "@
 }
 
@@ -129,26 +135,29 @@ if (Test-Path $csvPath) {
 
 Write-Host ""
 if ($Kind -eq 'file') {
-    Write-Host "Scaffolding $id (Kind: file / Type: $Type) ..." -ForegroundColor Cyan
+    Write-Host "Scaffolding $id (Kind: file / Type: $Type) -> $labName\" -ForegroundColor Cyan
 } else {
-    Write-Host "Scaffolding $id (Kind: $Kind) ..." -ForegroundColor Cyan
+    Write-Host "Scaffolding $id (Kind: $Kind) -> $labName\" -ForegroundColor Cyan
 }
+
+New-LabSkeleton -LabDir $labDir -SampleId $id -Kind $Kind -Title $Title -LabName $labName
+Write-Host "  Lab folder: $labName\" -ForegroundColor Green
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 function New-PhaseFile {
     param([string]$dir, [string]$content)
-    $folder = Join-Path $root $dir
+    $folder = Join-Path $labDir $dir
     if (-not (Test-Path $folder)) { New-Item -ItemType Directory -Path $folder | Out-Null }
     $path = Join-Path $folder "$id.md"
     if ((Test-Path $path) -and -not $OverwriteEmpty) {
-        Write-Warning "  $dir\$id.md already exists -- skipping."
+        Write-Warning "  $labName\$dir\$id.md already exists -- skipping."
         return
     }
     $verb = if (Test-Path $path) { 'Updated' } else { 'Created' }
     Set-Content -Path $path -Value $content -Encoding UTF8
-    Write-Host "  $verb`: $dir\$id.md" -ForegroundColor Green
+    Write-Host "  $verb`: $labName\$dir\$id.md" -ForegroundColor Green
 }
 
 # ============================================================
@@ -218,7 +227,7 @@ $tmplFileOriginal = @'
 - Dynamic: [02_dynamic/SAMPLE_ID.md](../02_dynamic/SAMPLE_ID.md)
 - Findings: [03_findings/SAMPLE_ID.md](../03_findings/SAMPLE_ID.md)
 - IOCs: [40_iocs/indicators.csv](../40_iocs/indicators.csv)
-- Screenshots: [50_screenshots/SAMPLE_ID/](../50_screenshots/SAMPLE_ID/)
+- Screenshots: [50_screenshots/](../50_screenshots/)
 '@
 
 # ---- FILE: 01_static (PE) ----
@@ -274,7 +283,7 @@ $tmplStaticPE = @'
 |---|------|------|---------------|
 | | | | |
 
-Cross-references: [acquisition](../00_original/SAMPLE_ID.md) | [dynamic](../02_dynamic/SAMPLE_ID.md) | [findings](../03_findings/SAMPLE_ID.md) | [screenshots](../50_screenshots/SAMPLE_ID/)
+Cross-references: [acquisition](../00_original/SAMPLE_ID.md) | [dynamic](../02_dynamic/SAMPLE_ID.md) | [findings](../03_findings/SAMPLE_ID.md) | [screenshots](../50_screenshots/)
 '@
 
 $tmplStaticOffice = @'
@@ -317,7 +326,7 @@ $tmplStaticOffice = @'
 |---|------|------|---------------|
 | | | | |
 
-Cross-references: [acquisition](../00_original/SAMPLE_ID.md) | [dynamic](../02_dynamic/SAMPLE_ID.md) | [findings](../03_findings/SAMPLE_ID.md) | [screenshots](../50_screenshots/SAMPLE_ID/)
+Cross-references: [acquisition](../00_original/SAMPLE_ID.md) | [dynamic](../02_dynamic/SAMPLE_ID.md) | [findings](../03_findings/SAMPLE_ID.md) | [screenshots](../50_screenshots/)
 '@
 
 $tmplStaticScript = @'
@@ -354,7 +363,7 @@ $tmplStaticScript = @'
 
 <!-- obfuscation layers, decoded behavior, confidence level. -->
 
-Cross-references: [acquisition](../00_original/SAMPLE_ID.md) | [dynamic](../02_dynamic/SAMPLE_ID.md) | [findings](../03_findings/SAMPLE_ID.md) | [screenshots](../50_screenshots/SAMPLE_ID/)
+Cross-references: [acquisition](../00_original/SAMPLE_ID.md) | [dynamic](../02_dynamic/SAMPLE_ID.md) | [findings](../03_findings/SAMPLE_ID.md) | [screenshots](../50_screenshots/)
 '@
 
 $tmplStaticArchive = @'
@@ -386,7 +395,7 @@ $tmplStaticArchive = @'
 
 ## Static summary (portfolio-ready)
 
-Cross-references: [acquisition](../00_original/SAMPLE_ID.md) | [dynamic](../02_dynamic/SAMPLE_ID.md) | [findings](../03_findings/SAMPLE_ID.md) | [screenshots](../50_screenshots/SAMPLE_ID/)
+Cross-references: [acquisition](../00_original/SAMPLE_ID.md) | [dynamic](../02_dynamic/SAMPLE_ID.md) | [findings](../03_findings/SAMPLE_ID.md) | [screenshots](../50_screenshots/)
 '@
 
 # ---- FILE: 02_dynamic (PE) ----
@@ -402,7 +411,7 @@ $tmplDynamicPE = @'
 | **Snapshot name** | <!-- e.g. clean_DATE --> |
 | **Instrumentation** | <!-- Procmon / ProcExp / TCPView / Wireshark --> |
 
-Cross-references: [findings](../03_findings/SAMPLE_ID.md) | [static](../01_static/SAMPLE_ID.md) | [acquisition](../00_original/SAMPLE_ID.md) | [screenshots](../50_screenshots/SAMPLE_ID/)
+Cross-references: [findings](../03_findings/SAMPLE_ID.md) | [static](../01_static/SAMPLE_ID.md) | [acquisition](../00_original/SAMPLE_ID.md) | [screenshots](../50_screenshots/)
 
 ---
 
@@ -651,7 +660,7 @@ dynamic_complete: false
 
 **Analyst one-liner:** <!-- single sentence summary -->
 
-Cross-references: [acquisition](../00_original/SAMPLE_ID.md) | [static](../01_static/SAMPLE_ID.md) | [dynamic](../02_dynamic/SAMPLE_ID.md) | [screenshots](../50_screenshots/SAMPLE_ID/) | [IOCs](../40_iocs/indicators.csv)
+Cross-references: [acquisition](../00_original/SAMPLE_ID.md) | [static](../01_static/SAMPLE_ID.md) | [dynamic](../02_dynamic/SAMPLE_ID.md) | [screenshots](../50_screenshots/) | [IOCs](../../40_iocs/indicators.csv)
 
 ## Verdict
 
@@ -721,7 +730,7 @@ $tmplCtfOriginal = @'
 - Recon: [01_static/SAMPLE_ID.md](../01_static/SAMPLE_ID.md)
 - Solve: [02_dynamic/SAMPLE_ID.md](../02_dynamic/SAMPLE_ID.md)
 - Writeup: [03_findings/SAMPLE_ID.md](../03_findings/SAMPLE_ID.md)
-- Screenshots: [50_screenshots/SAMPLE_ID/](../50_screenshots/SAMPLE_ID/)
+- Screenshots: [50_screenshots/](../50_screenshots/)
 '@
 
 $tmplCtfRecon = @'
@@ -765,7 +774,7 @@ $tmplCtfRecon = @'
 |---|------|---------------|
 | | | |
 
-Cross-references: [brief](../00_original/SAMPLE_ID.md) | [solve](../02_dynamic/SAMPLE_ID.md) | [writeup](../03_findings/SAMPLE_ID.md) | [screenshots](../50_screenshots/SAMPLE_ID/)
+Cross-references: [brief](../00_original/SAMPLE_ID.md) | [solve](../02_dynamic/SAMPLE_ID.md) | [writeup](../03_findings/SAMPLE_ID.md) | [screenshots](../50_screenshots/)
 '@
 
 $tmplCtfSolve = @'
@@ -921,7 +930,7 @@ $tmplLabOriginal = @'
 - Steps: [01_static/SAMPLE_ID.md](../01_static/SAMPLE_ID.md)
 - Results: [02_dynamic/SAMPLE_ID.md](../02_dynamic/SAMPLE_ID.md)
 - Reflection: [03_findings/SAMPLE_ID.md](../03_findings/SAMPLE_ID.md)
-- Screenshots: [50_screenshots/SAMPLE_ID/](../50_screenshots/SAMPLE_ID/)
+- Screenshots: [50_screenshots/](../50_screenshots/)
 '@
 
 $tmplLabSteps = @'
@@ -1090,7 +1099,7 @@ $tmplHuntOriginal = @'
 - Collection: [01_static/SAMPLE_ID.md](../01_static/SAMPLE_ID.md)
 - Analysis: [02_dynamic/SAMPLE_ID.md](../02_dynamic/SAMPLE_ID.md)
 - Outcome: [03_findings/SAMPLE_ID.md](../03_findings/SAMPLE_ID.md)
-- Screenshots: [50_screenshots/SAMPLE_ID/](../50_screenshots/SAMPLE_ID/)
+- Screenshots: [50_screenshots/](../50_screenshots/)
 '@
 
 $tmplHuntCollection = @'
@@ -1300,28 +1309,44 @@ switch ($Kind) {
         New-PhaseFile '02_dynamic'  (Apply-Template $tmplHuntAnalysis)
         New-PhaseFile '03_findings' (Apply-Template $tmplHuntFindings)
     }
+    'school' {
+        $schoolOrig = (Apply-Template $tmplLabOriginal).Replace('**Kind:** Lab', '**Kind:** School').Replace('lab brief', 'class / module brief')
+        $schoolFind = (Apply-Template $tmplLabFindings).Replace('engagement_kind: lab', 'engagement_kind: school').Replace('  - lab', '  - school').Replace('lab reflection', 'school reflection')
+        New-PhaseFile '00_original' $schoolOrig
+        New-PhaseFile '01_static'   (Apply-Template $tmplLabSteps)
+        New-PhaseFile '02_dynamic'  (Apply-Template $tmplLabResults)
+        New-PhaseFile '03_findings' $schoolFind
+    }
+    'homelab' {
+        $homeOrig = (Apply-Template $tmplLabOriginal).Replace('**Kind:** Lab', '**Kind:** Homelab').Replace('lab brief / objectives', 'build plan / goals').Replace('**Status:** not_started', '**Status:** planned')
+        $homeFind = (Apply-Template $tmplLabFindings).Replace('engagement_kind: lab', 'engagement_kind: homelab').Replace('status: not_started', 'status: planned').Replace('  - lab', '  - homelab').Replace('lab reflection', 'homelab notes')
+        New-PhaseFile '00_original' $homeOrig
+        New-PhaseFile '01_static'   (Apply-Template $tmplLabSteps)
+        New-PhaseFile '02_dynamic'  (Apply-Template $tmplLabResults)
+        New-PhaseFile '03_findings' $homeFind
+    }
 }
 
 # ============================================================
 # ====  SCREENSHOTS FOLDER + SHOT_INDEX  =====================
 # ============================================================
 
-$ssDir      = Join-Path $root "50_screenshots\$id"
+$ssDir      = Join-Path $labDir '50_screenshots'
 $shotIndex  = Join-Path $ssDir 'SHOT_INDEX.txt'
 $gitkeep    = Join-Path $ssDir '.gitkeep'
 
 if (-not (Test-Path $ssDir)) {
     New-Item -ItemType Directory -Path $ssDir | Out-Null
-    Write-Host "  Created: 50_screenshots\$id\" -ForegroundColor Green
+    Write-Host "  Created: $labName\50_screenshots\" -ForegroundColor Green
 }
 
 if ((-not (Test-Path $shotIndex)) -or $OverwriteEmpty) {
   $shotVerb = if (Test-Path $shotIndex) { 'Updated' } else { 'Created' }
   Set-Content -Path $shotIndex -Value (Apply-Template $tmplShotIndex) -Encoding UTF8
-  Write-Host "  $shotVerb`: 50_screenshots\$id\SHOT_INDEX.txt" -ForegroundColor Green
+  Write-Host "  $shotVerb`: $labName\50_screenshots\SHOT_INDEX.txt" -ForegroundColor Green
 }
 
-if (-not (Get-ChildItem $ssDir -File | Where-Object { $_.Name -ne 'SHOT_INDEX.txt' })) {
+if (-not (Get-ChildItem $ssDir -File | Where-Object { $_.Name -notin @('SHOT_INDEX.txt', 'README.md') })) {
     New-Item -ItemType File -Path $gitkeep -Force | Out-Null
 }
 
@@ -1330,10 +1355,12 @@ if (-not (Get-ChildItem $ssDir -File | Where-Object { $_.Name -ne 'SHOT_INDEX.tx
 # ============================================================
 
 $initStatus = switch ($Kind) {
-    'ctf'  { 'assigned' }
-    'lab'  { 'not_started' }
-    'hunt' { 'scoped' }
-    default { 'queued' }
+    'ctf'     { 'assigned' }
+    'lab'     { 'not_started' }
+    'school'  { 'not_started' }
+    'homelab' { 'planned' }
+    'hunt'    { 'scoped' }
+    default   { 'queued' }
 }
 
 if (Test-Path $csvPath) {
@@ -1342,6 +1369,20 @@ if (Test-Path $csvPath) {
 
     # Determine column names present
     $cols = $tracker[0].PSObject.Properties.Name
+    if ($cols -notcontains 'lab_folder') {
+        $tracker | ForEach-Object {
+            $_ | Add-Member -NotePropertyName 'lab_folder' -NotePropertyValue '' -Force
+        }
+        $cols = $tracker[0].PSObject.Properties.Name
+        $existing = $tracker | Where-Object { $_.sample_id -eq $id }
+    }
+    if ($cols -notcontains 'notes_course') {
+        $tracker | ForEach-Object {
+            $_ | Add-Member -NotePropertyName 'notes_course' -NotePropertyValue '' -Force
+        }
+        $cols = $tracker[0].PSObject.Properties.Name
+        $existing = $tracker | Where-Object { $_.sample_id -eq $id }
+    }
 
     if ($existing) {
         if ($ReserveOnly) {
@@ -1357,8 +1398,10 @@ if (Test-Path $csvPath) {
             if ($cols -contains 'engagement_kind') { $existing.engagement_kind = $Kind }
             if ($cols -contains 'platform')        { $existing.platform        = $platformVal }
             if ($cols -contains 'date_started')    { $existing.date_started    = $date }
+            if ($cols -contains 'lab_folder')      { $existing.lab_folder      = $labName }
+            if ($cols -contains 'notes_course' -and $Course) { $existing.notes_course = $Course }
             $tracker | Export-Csv $csvPath -NoTypeInformation -Encoding UTF8
-            Write-Host "  Updated tracker: $id -> $initStatus" -ForegroundColor Green
+            Write-Host "  Updated tracker: $id -> $initStatus ($labName)" -ForegroundColor Green
         }
     } else {
         $newRow = [ordered]@{}
@@ -1370,6 +1413,8 @@ if (Test-Path $csvPath) {
         if ($cols -contains 'platform')        { $newRow['platform']        = $platformVal }
         if ($cols -contains 'date_started')    { $newRow['date_started']    = if ($ReserveOnly) { '' } else { $date } }
         if ($cols -contains 'notes')           { $newRow['notes']           = 'Reserve -- fill when assigned' }
+        if ($cols -contains 'lab_folder')      { $newRow['lab_folder']      = if ($ReserveOnly) { '' } else { $labName } }
+        if ($cols -contains 'notes_course')    { $newRow['notes_course']    = if ($ReserveOnly) { '' } else { $Course } }
 
         $tracker += [pscustomobject]$newRow
         $tracker | Export-Csv $csvPath -NoTypeInformation -Encoding UTF8
@@ -1395,15 +1440,22 @@ if ($WithLongWriteup) {
     & (Join-Path $PSScriptRoot 'scaffold_writeup.ps1') @scaffoldArgs
 }
 
+if ($Course -and -not $ReserveOnly) {
+    & (Join-Path $PSScriptRoot 'link_notes.ps1') -SampleId $id -Course $Course
+}
+
 # ============================================================
 # ====  SUMMARY  =============================================
 # ============================================================
 
 Write-Host ""
-Write-Host "Done. $id scaffolded ($Kind)." -ForegroundColor Green
+Write-Host "Done. $id scaffolded ($Kind) in $labName\" -ForegroundColor Green
 if ($WithLongWriteup) {
-    Write-Host "  Long writeup: 04_writeups\$id.md" -ForegroundColor Green
+    Write-Host "  Long writeup: $labName\04_writeups\$id.md" -ForegroundColor Green
 }
+Write-Host ""
+Write-Host "  Stay in $labName\  Dump into CAPTURE.md, then 00 -> 01 -> 02 -> 03." -ForegroundColor Yellow
+Write-Host "  Open both lab + Notes: .\30_scripts\open_session.ps1 -SampleId $id" -ForegroundColor Yellow
 Write-Host ""
 
 switch ($Kind) {

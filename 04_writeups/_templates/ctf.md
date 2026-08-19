@@ -39,7 +39,7 @@ evidence_index:
   recon:       ../01_static/SAMPLE_ID.md
   solve:       ../02_dynamic/SAMPLE_ID.md
   findings:    ../03_findings/SAMPLE_ID.md
-  screenshots: ../50_screenshots/SAMPLE_ID/
+  screenshots: ../50_screenshots/
 ---
 
 # <FILL -- challenge / machine title>
@@ -80,7 +80,7 @@ evidence_index:
 |---------|------|---------|
 | 0.1 | DATE | Initial draft |
 
-> Cross-reference: [`20_notes/ctf-machine-index.md`](../20_notes/ctf-machine-index.md) — update the index row for this slot.
+> Cross-reference: [`20_notes/ctf-machine-index.md`](../../20_notes/ctf-machine-index.md) — update the index row for this slot.
 
 ---
 
@@ -174,7 +174,7 @@ Canonical brief: [`00_original/SAMPLE_ID.md`](../00_original/SAMPLE_ID.md)
 
 ## 6. Tooling and commands
 
-> See [`20_notes/ctf-tooling-reference.md`](../20_notes/ctf-tooling-reference.md) for the persistent tooling notes.
+> See [`20_notes/ctf-tooling-reference.md`](../../20_notes/ctf-tooling-reference.md) for the persistent tooling notes.
 
 | Tool | Version | Role in this challenge |
 |------|---------|------------------------|
@@ -195,7 +195,7 @@ Canonical brief: [`00_original/SAMPLE_ID.md`](../00_original/SAMPLE_ID.md)
 
 ## 7. Skills and learning outcomes
 
-> Align with `skills[]` in [`03_findings/SAMPLE_ID.md`](../03_findings/SAMPLE_ID.md) and update [`20_notes/skills-coverage.md`](../20_notes/skills-coverage.md).
+> Align with `skills[]` in [`03_findings/SAMPLE_ID.md`](../03_findings/SAMPLE_ID.md) and update [`20_notes/skills-coverage.md`](../../20_notes/skills-coverage.md).
 
 | Skill / technique | Depth after this challenge | Evidence in this engagement |
 |-------------------|-----------------------------|------------------------------|
@@ -244,7 +244,7 @@ Canonical brief: [`00_original/SAMPLE_ID.md`](../00_original/SAMPLE_ID.md)
 |------|-------------|
 | `<FILL>` | `<one-line description>` |
 
-_(Full index: [`50_screenshots/SAMPLE_ID/SHOT_INDEX.txt`](../50_screenshots/SAMPLE_ID/SHOT_INDEX.txt))_
+_(Full index: [`50_screenshots/SHOT_INDEX.txt`](../50_screenshots/SHOT_INDEX.txt))_
 
 ### Appendix B — References
 

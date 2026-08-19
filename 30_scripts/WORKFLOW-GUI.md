@@ -1,5 +1,13 @@
 # Workflow GUI -- usage (Windows and Linux)
 
+**Layout:** each engagement lives in `LAB{NN}_{slug}\`. The GUI source (`workflow_gui.py`)
+resolves those folders. **The currently shipped `.exe` is unchanged** -- until you rebuild,
+run from source for the per-lab layout:
+
+```text
+python .\30_scripts\workflow_gui.py
+```
+
 ---
 
 ## Disclaimer (read before use)

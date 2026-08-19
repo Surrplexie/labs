@@ -35,8 +35,8 @@ evidence_index:
   static:      ../01_static/SAMPLE_ID.md
   dynamic:     ../02_dynamic/SAMPLE_ID.md
   findings:    ../03_findings/SAMPLE_ID.md
-  screenshots: ../50_screenshots/SAMPLE_ID/
-  iocs_csv:    ../40_iocs/indicators.csv
+  screenshots: ../50_screenshots/
+  iocs_csv:    ../../40_iocs/indicators.csv
 ---
 
 # <FILL -- same as title>
@@ -202,7 +202,7 @@ evidence_index:
 
 ### User-visible behavior
 
-`<FILL -- fake error dialogs, installer UX, tray icons, decoy documents opened; link screenshot IDs from 50_screenshots/SAMPLE_ID/>`
+`<FILL -- fake error dialogs, installer UX, tray icons, decoy documents opened; link screenshot IDs from 50_screenshots/>`
 
 ### Dynamic conclusion
 
@@ -251,7 +251,7 @@ evidence_index:
 ## 8. MITRE ATT&CK mapping
 
 > [`03_findings/SAMPLE_ID.md`](../03_findings/SAMPLE_ID.md) lists technique IDs. **Justify** each here with: technique → specific observation → data source → confidence.
-> See [`20_notes/MITRE-coverage.md`](../20_notes/MITRE-coverage.md) for cross-engagement tracking.
+> See [`20_notes/MITRE-coverage.md`](../../20_notes/MITRE-coverage.md) for cross-engagement tracking.
 
 | ID | Name | Sub-technique | Observation | Data source | Confidence |
 |----|------|---------------|-------------|-------------|------------|
@@ -271,7 +271,7 @@ evidence_index:
 
 ## 9. Detection engineering
 
-> See [`20_notes/detection-catalog.md`](../20_notes/detection-catalog.md) for cross-engagement ideas.
+> See [`20_notes/detection-catalog.md`](../../20_notes/detection-catalog.md) for cross-engagement ideas.
 > Reusable queries → [`45_hunt_queries/`](../45_hunt_queries/README.md).
 
 ### Sigma / KQL / Splunk sketch
@@ -366,7 +366,7 @@ evidence_index:
 |------|-------------|
 | `<FILL>` | `<one-line description>` |
 
-_(Full index: [`50_screenshots/SAMPLE_ID/SHOT_INDEX.txt`](../50_screenshots/SAMPLE_ID/SHOT_INDEX.txt))_
+_(Full index: [`50_screenshots/SHOT_INDEX.txt`](../50_screenshots/SHOT_INDEX.txt))_
 
 ### Appendix E — References
 
@@ -384,7 +384,7 @@ _(Full index: [`50_screenshots/SAMPLE_ID/SHOT_INDEX.txt`](../50_screenshots/SAMP
 
 - [ ] No analyst host paths, internal hostnames, or real credentials anywhere in this file
 - [ ] `vm_profile` and `tooling_snapshot` describe the lab environment only (no employer infrastructure)
-- [ ] EXIF metadata stripped from all new screenshots in `50_screenshots/SAMPLE_ID/`
+- [ ] EXIF metadata stripped from all new screenshots in `50_screenshots/`
 - [ ] `40_iocs/indicators.csv` updated for any **new** confirmed indicators introduced here
 - [ ] `03_findings/SAMPLE_ID.md` is still accurate and not contradicted by this writeup
 - [ ] MITRE table IDs match `03_findings` mitre_techniques list

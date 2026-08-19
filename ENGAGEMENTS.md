@@ -13,7 +13,7 @@ After `export-summary.ps1`, [`INDEX.md`](./INDEX.md) is grouped by kind so revie
 1. **File analyses** — malware triage (primary portfolio signal)
 2. **CTF write-ups**, **Labs**, **Threat hunts** — clearly separated tables and cross-references
 
-Finished work for any kind lives in **`03_findings/sample_XX.md`**. Optional narrative depth: **`04_writeups/sample_XX.md`** (kind-specific templates via `scaffold_writeup.ps1`).
+Finished work for any kind lives in **`LAB{NN}_*/03_findings/sample_XX.md`**. Optional narrative depth: **`LAB{NN}_*/04_writeups/sample_XX.md`** (kind-specific templates via `scaffold_writeup.ps1`).
 
 ---
 
@@ -23,8 +23,23 @@ Finished work for any kind lives in **`03_findings/sample_XX.md`**. Optional nar
 |------|-----------|----------------|---------|
 | `file` | A single malware/suspicious artifact | Static triage, dynamic triage, IOCs, verdict | MalwareBazaar PE, weaponised doc |
 | `ctf` | A CTF or HackTheBox/TryHackMe challenge | Writeup, methodology, flag proof | HTB machine, CTF web challenge |
-| `lab` | A guided course/training lab or module | Step log, objectives met, reflection | TryHackMe room, SANS lab, employer onboarding |
-| `hunt` | A hypothesis-driven detection exercise | Detections, queries, timeline, outcome | Splunk threat hunt, SIEM alert triage |
+| `lab` | Guided platform lab (THM, HTB Academy, SANS) | Step log, objectives met, reflection | TryHackMe room |
+| `school` | Class / coursework / club module | Same flow as `lab`, linked to Notes | CS50, CompTIA, ENG-201, Security Club |
+| `homelab` | Home range / self-built lab | Build log, what it does, notes | Detection homelab, AD range |
+| `hunt` | A hypothesis-driven detection exercise | Detections, queries, timeline, outcome | Splunk threat hunt |
+
+Media (png/jpg, recordings, slides) is **not a kind**. Screenshots → `50_screenshots/`. Recordings/slides → `55_media/` (local). Class dumps stay in `Downloads\Notes`.
+
+### Notes bridge (`Downloads\Notes`)
+
+Course folders there (`CS50`, `CompTIA Security+ SY0-701`, …) stay the live class notebook. Each git lab can point at one course:
+
+```powershell
+powershell -File .\30_scripts\new_engagement.ps1 -NextNumber 51 -Kind school -Course "CS50" -Title "Week 3"
+powershell -File .\30_scripts\open_session.ps1 -SampleId 51
+```
+
+`open_session.ps1` opens the lab folder, `CAPTURE.md`, and the Notes course folder together. `link_notes.ps1` writes `NOTES_LINK.md` plus `Notes\<course>\labs\LAB….md`.
 
 ---
 
@@ -48,10 +63,7 @@ that feeds `INDEX.md` and `dist/portfolio.json`.
 
 ## Slot reservation & Tier 1 conventions
 
-**Tier 1** means using the existing layout only — no new top-level folders, no second
-tracker, no kind-specific directory names. CTF, lab, and hunt work run through the same
-`sample_01`–`sample_50` slots as malware; `engagement_kind` and the correct **status
-lifecycle** tell the automation which rules apply.
+**Tier 1** means one `LAB{NN}_{slug}` folder per engagement, plus shared catalogs at repo root (`20_notes`, `30_scripts`, `40_iocs`, `45_hunt_queries`). CTF, lab, and hunt work use the same `sample_01`–`sample_50` tracker slots; `engagement_kind` and the correct **status lifecycle** tell the automation which rules apply.
 
 This logbook is **malware-triage primary**. Reserve slots so HTB rooms and course labs do
 not collide with MalwareBazaar sample numbers you already associate with file work.
@@ -60,10 +72,12 @@ not collide with MalwareBazaar sample numbers you already associate with file wo
 
 | Slots | Kind | Use for |
 |-------|------|---------|
-| `sample_01`–`30` | `file` | Malware / suspicious artifacts (MalwareBazaar, drops, docs) |
-| `sample_31`–`40` | `ctf` | HackTheBox, TryHackMe, PicoCTF, event challenges |
-| `sample_41`–`45` | `lab` | Guided course modules, training paths |
-| `sample_46`–`50` | `hunt` | Hypothesis-driven detection / SIEM exercises |
+| `sample_01`–`30` | `file` | Malware / suspicious artifacts |
+| `sample_31`–`40` | `ctf` | HackTheBox, TryHackMe, PicoCTF |
+| `sample_41`–`45` | `lab` | Guided platform labs |
+| `sample_46`–`50` | `hunt` | Detection / SIEM exercises |
+| `sample_51`–`70` | `school` | Class / coursework / club (Notes courses) |
+| `sample_71`–`85` | `homelab` | Home range / self-built labs |
 
 These ranges are a **convention**, not enforced by scripts. Empty tracker rows may still
 show `engagement_kind: file` until you scaffold — set the correct kind with
@@ -165,8 +179,11 @@ Each kind has its own set of valid statuses. Use `close_sample.ps1 -SampleId N -
 ### ctf
 `assigned` -> `recon` -> `stuck` | `solved` -> `writeup_done`
 
-### lab
+### lab / school
 `not_started` -> `in_progress` -> `objectives_met` -> `reviewed`
+
+### homelab
+`planned` -> `building` -> `running` -> `documented`
 
 ### hunt
 `scoped` -> `collecting` -> `analyzing` -> `closed`

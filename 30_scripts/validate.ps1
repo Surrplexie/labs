@@ -49,6 +49,7 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+. (Join-Path $PSScriptRoot '_paths.ps1')
 
 $script:passes = 0
 $script:warns  = 0
@@ -175,7 +176,7 @@ foreach ($row in $nonEmptyRows) {
 
     # Check 2: Phase files exist + Check 4: content depth
     foreach ($dir in $PHASE_DIRS) {
-        $filePath = Join-Path $Root "$dir\$id.md"
+        $filePath = Get-PhaseFilePath -Root $Root -SampleId $id -Phase $dir -TrackerRow $row
         if (-not (Test-Path $filePath)) {
             Write-Fail "$id : missing phase file $dir\$id.md"
         } else {
@@ -210,9 +211,9 @@ foreach ($row in $nonEmptyRows) {
     }
 
     # Check 10: Screenshots folder
-    $ssDir = Join-Path $Root "50_screenshots\$id"
+    $ssDir = Get-ScreenshotDir -Root $Root -SampleId $id -TrackerRow $row
     if (-not (Test-Path $ssDir)) {
-        Write-Warn "$id : no screenshots folder at 50_screenshots\$id\"
+        Write-Warn "$id : no screenshots folder at $(Split-Path $ssDir -Leaf) (expected under lab folder)"
     } else {
         $imgCount = (Get-ChildItem $ssDir -File | Measure-Object).Count
         Write-Pass "$id : screenshots folder present ($imgCount file(s))"
@@ -257,13 +258,28 @@ Write-Section "8. Orphan phase file detection"
 $trackerIds = $tracker | Select-Object -ExpandProperty sample_id
 $orphansFound = $false
 
+$phaseHits = Get-ChildItem -LiteralPath $Root -Directory -ErrorAction SilentlyContinue |
+    Where-Object { $_.Name -match '^LAB\d+' }
+foreach ($lab in $phaseHits) {
+    foreach ($dir in $PHASE_DIRS) {
+        $phaseDir = Join-Path $lab.FullName $dir
+        if (-not (Test-Path $phaseDir)) { continue }
+        Get-ChildItem $phaseDir -Filter '*.md' | Where-Object { $_.Name -ne 'README.md' } | ForEach-Object {
+            $baseName = $_.BaseName
+            if ($baseName -notin $trackerIds) {
+                Write-Warn "Orphan: $($lab.Name)\$dir\$($_.Name) has no matching row in samples_tracker.csv"
+                $orphansFound = $true
+            }
+        }
+    }
+}
+# Legacy root phase files (if any remain)
 foreach ($dir in $PHASE_DIRS) {
     $phaseDir = Join-Path $Root $dir
     if (-not (Test-Path $phaseDir)) { continue }
-
     Get-ChildItem $phaseDir -Filter '*.md' | Where-Object { $_.Name -ne 'README.md' } | ForEach-Object {
         $baseName = $_.BaseName
-        if ($baseName -notin $trackerIds) {
+        if ($baseName -match '^sample_' -and $baseName -notin $trackerIds) {
             Write-Warn "Orphan: $dir\$($_.Name) has no matching row in samples_tracker.csv"
             $orphansFound = $true
         }
@@ -314,7 +330,7 @@ $schemaIssues = $false
 
 foreach ($row in $nonEmptyRows) {
     $id           = $row.sample_id.Trim()
-    $findingsPath = Join-Path $Root "03_findings\$id.md"
+    $findingsPath = Get-PhaseFilePath -Root $Root -SampleId $id -Phase '03_findings' -TrackerRow $row
     if (-not (Test-Path $findingsPath)) { continue }
 
     $raw    = Get-Content $findingsPath -Raw -Encoding UTF8
@@ -329,7 +345,7 @@ foreach ($row in $nonEmptyRows) {
         $schemaIssues = $true
     } else {
         $kind = Get-EngagementKind -Row $row -Content $raw
-        if ($kind -in @('ctf', 'lab', 'hunt') -and $sv -ne '2') {
+        if ($kind -in @('ctf', 'lab', 'hunt', 'school', 'homelab') -and $sv -ne '2') {
             Write-Warn "$id : $kind engagement should use schema_version: 2 (found '$sv'); re-scaffold or edit 03_findings"
             $schemaIssues = $true
         } else {
@@ -398,7 +414,7 @@ if ($solvedCtfRows.Count -eq 0) {
     $ctfDepthIssues = $false
     foreach ($row in $solvedCtfRows) {
         $id = $row.sample_id.Trim()
-        $dynPath = Join-Path $Root "02_dynamic\$id.md"
+        $dynPath = Get-PhaseFilePath -Root $Root -SampleId $id -Phase '02_dynamic' -TrackerRow $row
         if (Test-Path $dynPath) {
             $dynContent = Get-Content $dynPath -Raw -Encoding UTF8 -ErrorAction SilentlyContinue
             $placeholderCount = ([regex]::Matches($dynContent, 'PENDING|TODO|_Not captured_|<FILL')).Count
@@ -427,7 +443,7 @@ Write-Section "15. Skills field population check"
 $closedNonFileRows = @($nonEmptyRows | Where-Object {
     $k = Get-EngagementKind -Row $_ -Content $null
     $s = $_.status.Trim().ToLower()
-    $k -ne 'file' -and $s -in @('done', 'solved', 'writeup_done', 'reviewed', 'closed', 'objectives_met')
+    $k -ne 'file' -and $s -in @('done', 'solved', 'writeup_done', 'reviewed', 'closed', 'objectives_met', 'documented')
 })
 
 if ($closedNonFileRows.Count -eq 0) {
@@ -436,7 +452,7 @@ if ($closedNonFileRows.Count -eq 0) {
     $skillsIssues = $false
     foreach ($row in $closedNonFileRows) {
         $id = $row.sample_id.Trim()
-        $findPath = Join-Path $Root "03_findings\$id.md"
+        $findPath = Get-PhaseFilePath -Root $Root -SampleId $id -Phase '03_findings' -TrackerRow $row
         if (Test-Path $findPath) {
             $fContent = Get-Content $findPath -Raw -Encoding UTF8 -ErrorAction SilentlyContinue
             $skillsMatch = $fContent -match '(?m)^skills\s*:'
@@ -478,7 +494,7 @@ if (-not (Test-Path $huntQueryDir)) {
         $refIssues = $false
         foreach ($row in $huntRows) {
             $id = $row.sample_id.Trim()
-            $findPath = Join-Path $Root "03_findings\$id.md"
+            $findPath = Get-PhaseFilePath -Root $Root -SampleId $id -Phase '03_findings' -TrackerRow $row
             if (-not (Test-Path $findPath)) { continue }
             $raw = Get-Content $findPath -Raw -Encoding UTF8 -ErrorAction SilentlyContinue
             if (-not $raw) { continue }
@@ -488,7 +504,7 @@ if (-not (Test-Path $huntQueryDir)) {
                 $block = if ($raw -match '(?s)query_refs\s*:\s*\r?\n((?:\s+-\s+\S+\r?\n)+)') { $Matches[1] } else { '' }
                 $refs = [regex]::Matches($block, '(?m)^\s+-\s+(\S+)') | ForEach-Object { $_.Groups[1].Value.Trim() }
             }
-            $staticPath = Join-Path $Root "01_static\$id.md"
+            $staticPath = Get-PhaseFilePath -Root $Root -SampleId $id -Phase '01_static' -TrackerRow $row
             if (Test-Path $staticPath) {
                 $sRaw = Get-Content $staticPath -Raw -Encoding UTF8 -ErrorAction SilentlyContinue
                 if ($sRaw) {
@@ -525,7 +541,7 @@ Write-Section "17. Lab completion depth check"
 $closedLabRows = @($nonEmptyRows | Where-Object {
     $k = Get-EngagementKind -Row $_ -Content $null
     $s = $_.status.Trim().ToLower()
-    $k -eq 'lab' -and $s -in @('reviewed', 'objectives_met')
+    $k -in @('lab', 'school') -and $s -in @('reviewed', 'objectives_met')
 })
 
 if ($closedLabRows.Count -eq 0) {
@@ -534,8 +550,8 @@ if ($closedLabRows.Count -eq 0) {
     $labDepthIssues = $false
     foreach ($row in $closedLabRows) {
         $id = $row.sample_id.Trim()
-        $staticPath = Join-Path $Root "01_static\$id.md"
-        $findPath   = Join-Path $Root "03_findings\$id.md"
+        $staticPath = Get-PhaseFilePath -Root $Root -SampleId $id -Phase '01_static' -TrackerRow $row
+        $findPath   = Get-PhaseFilePath -Root $Root -SampleId $id -Phase '03_findings' -TrackerRow $row
 
         if (Test-Path $staticPath) {
             $staticContent = Get-Content $staticPath -Raw -Encoding UTF8 -ErrorAction SilentlyContinue
@@ -590,7 +606,7 @@ if ($closedHuntRows.Count -eq 0) {
     $huntDepthIssues = $false
     foreach ($row in $closedHuntRows) {
         $id = $row.sample_id.Trim()
-        $staticPath = Join-Path $Root "01_static\$id.md"
+        $staticPath = Get-PhaseFilePath -Root $Root -SampleId $id -Phase '01_static' -TrackerRow $row
         if (-not (Test-Path $staticPath)) { continue }
 
         $staticContent = Get-Content $staticPath -Raw -Encoding UTF8 -ErrorAction SilentlyContinue
@@ -627,7 +643,7 @@ $writeupChecked    = 0
 
 foreach ($row in $nonEmptyRows) {
     $id          = $row.sample_id.Trim()
-    $writeupPath = Join-Path $Root "04_writeups\$id.md"
+    $writeupPath = Get-PhaseFilePath -Root $Root -SampleId $id -Phase '04_writeups' -TrackerRow $row
     if (-not (Test-Path $writeupPath)) { continue }
 
     $writeupChecked++
@@ -668,7 +684,7 @@ $wuHygieneChecked = 0
 
 foreach ($row in $nonEmptyRows) {
     $id          = $row.sample_id.Trim()
-    $writeupPath = Join-Path $Root "04_writeups\$id.md"
+    $writeupPath = Get-PhaseFilePath -Root $Root -SampleId $id -Phase '04_writeups' -TrackerRow $row
     if (-not (Test-Path $writeupPath)) { continue }
 
     $wuRaw = Get-Content $writeupPath -Raw -Encoding UTF8 -ErrorAction SilentlyContinue

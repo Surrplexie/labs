@@ -52,6 +52,7 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+. (Join-Path $PSScriptRoot '_paths.ps1')
 
 # ---------------------------------------------------------------------------
 # Locate exiftool
@@ -98,25 +99,26 @@ if (-not $hasExiftool) {
 # Locate screenshot files
 # ---------------------------------------------------------------------------
 
-$screenshotRoot = Join-Path $Root '50_screenshots'
-
-if (-not (Test-Path $screenshotRoot)) {
-    Write-Error "50_screenshots/ folder not found at: $screenshotRoot"
-    exit 1
-}
-
-$searchRoot = $screenshotRoot
 if ($SampleId -ne '') {
-    $searchRoot = Join-Path $screenshotRoot $SampleId
+    $searchRoot = Get-ScreenshotDir -Root $Root -SampleId $SampleId
     if (-not (Test-Path $searchRoot)) {
         Write-Error "Screenshot folder not found: $searchRoot"
+        exit 1
+    }
+    $searchRoots = @($searchRoot)
+} else {
+    $searchRoots = @(Get-AllScreenshotRoots -Root $Root)
+    if ($searchRoots.Count -eq 0) {
+        Write-Error "No 50_screenshots folders found under LAB* or repo root."
         exit 1
     }
 }
 
 $imgExtensions = @('.png', '.jpg', '.jpeg', '.heic', '.heif')
-$allImages = Get-ChildItem -Path $searchRoot -Recurse -File -ErrorAction SilentlyContinue |
-    Where-Object { $imgExtensions -contains $_.Extension.ToLower() }
+$allImages = foreach ($searchRoot in $searchRoots) {
+    Get-ChildItem -Path $searchRoot -Recurse -File -ErrorAction SilentlyContinue |
+        Where-Object { $imgExtensions -contains $_.Extension.ToLower() }
+}
 
 $pngs  = @($allImages | Where-Object { $_.Extension -eq '.png' })
 $jpegs = @($allImages | Where-Object { $_.Extension -in @('.jpg', '.jpeg') })

@@ -226,6 +226,23 @@ dist/sbom.cdx.json
 *.spec
 # GUI config (local machine settings, not shared)
 30_scripts/.workflow_gui_config.json
+30_scripts/notes_root.local.txt
+
+# ---------------------------------------------------------------------------
+# Per-lab media drops (keep MEDIA_INDEX.md; leave binaries local)
+# ---------------------------------------------------------------------------
+**/55_media/*.mp4
+**/55_media/*.mkv
+**/55_media/*.mov
+**/55_media/*.webm
+**/55_media/*.avi
+**/55_media/*.wav
+**/55_media/*.mp3
+**/55_media/*.m4a
+**/55_media/*.pdf
+!**/55_media/README.md
+!**/55_media/MEDIA_INDEX.md
+!**/55_media/.gitkeep
 
 # Whitelist build_requirements.txt (pinned deps, committed intentionally)
 !30_scripts/build_requirements.txt

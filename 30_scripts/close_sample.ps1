@@ -48,10 +48,12 @@ param(
         'queued', 'static', 'dynamic', 'done',
         # ctf
         'assigned', 'recon', 'stuck', 'solved', 'writeup_done',
-        # lab
+        # lab / school
         'not_started', 'in_progress', 'objectives_met', 'reviewed',
         # hunt
-        'scoped', 'collecting', 'analyzing', 'closed'
+        'scoped', 'collecting', 'analyzing', 'closed',
+        # homelab
+        'planned', 'building', 'running', 'documented'
     )]
     [string]$Status,
 
@@ -60,6 +62,7 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+. (Join-Path $PSScriptRoot '_paths.ps1')
 $root = Split-Path -Parent $PSScriptRoot
 
 # Normalize sample ID
@@ -169,7 +172,7 @@ if ($kind -eq 'file') {
         Write-Check "No HEIC files committed (convert to PNG)"
         Write-Host ""
 
-        $wuPath = Join-Path $root "04_writeups\$SampleId.md"
+        $wuPath = Get-PhaseFilePath -Root $root -SampleId $SampleId -Phase '04_writeups' -TrackerRow $row
         Write-Head "-- Optional: 04_writeups long-form report --"
         if (Test-Path $wuPath) {
             Write-Done "04_writeups\$SampleId.md already exists"
@@ -222,7 +225,7 @@ if ($kind -eq 'ctf') {
         Write-Check "No VPN configs, instance IPs, or lab credentials in any committed file"
         Write-Host ""
 
-        $wuPath = Join-Path $root "04_writeups\$SampleId.md"
+        $wuPath = Get-PhaseFilePath -Root $root -SampleId $SampleId -Phase '04_writeups' -TrackerRow $row
         Write-Head "-- Optional: 04_writeups long-form report --"
         if (Test-Path $wuPath) {
             Write-Done "04_writeups\$SampleId.md already exists"
@@ -234,8 +237,8 @@ if ($kind -eq 'ctf') {
     }
 }
 
-# ---- LAB kind ----
-if ($kind -eq 'lab') {
+# ---- LAB / SCHOOL kind ----
+if ($kind -in @('lab', 'school')) {
     if ($Status -in @('not_started', 'in_progress', 'objectives_met', 'reviewed')) {
         Write-Head "-- 00_original (lab brief) --"
         Write-Check "Course, module, lab name filled"
@@ -271,7 +274,7 @@ if ($kind -eq 'lab') {
         Write-Check "No lab credentials, VPN keys, or instance IPs in any committed file"
         Write-Host ""
 
-        $wuPath = Join-Path $root "04_writeups\$SampleId.md"
+        $wuPath = Get-PhaseFilePath -Root $root -SampleId $SampleId -Phase '04_writeups' -TrackerRow $row
         Write-Head "-- Optional: 04_writeups long-form report --"
         if (Test-Path $wuPath) {
             Write-Done "04_writeups\$SampleId.md already exists"
@@ -325,7 +328,7 @@ if ($kind -eq 'hunt') {
         Write-Check "Run: 30_scripts\strip-exif.ps1"
         Write-Host ""
 
-        $wuPath = Join-Path $root "04_writeups\$SampleId.md"
+        $wuPath = Get-PhaseFilePath -Root $root -SampleId $SampleId -Phase '04_writeups' -TrackerRow $row
         Write-Head "-- Optional: 04_writeups long-form report --"
         if (Test-Path $wuPath) {
             Write-Done "04_writeups\$SampleId.md already exists"
@@ -333,6 +336,32 @@ if ($kind -eq 'hunt') {
             Write-Host "  Scaffold a detection-engineering narrative (optional):" -ForegroundColor DarkGray
             Write-Host "    powershell -ExecutionPolicy Bypass -File .\30_scripts\scaffold_writeup.ps1 -SampleId $SampleId -Kind hunt" -ForegroundColor DarkGray
         }
+        Write-Host ""
+    }
+}
+
+# ---- HOMELAB kind ----
+if ($kind -eq 'homelab') {
+    if ($Status -in @('planned', 'building', 'running', 'documented')) {
+        Write-Head "-- 00_original (build plan) --"
+        Write-Check "Goals listed"
+        Write-Check "Environment noted (no home IPs, no creds)"
+        Write-Host ""
+    }
+    if ($Status -in @('building', 'running', 'documented')) {
+        Write-Head "-- 01_static (build log) --"
+        Write-Check "Steps / commands recorded"
+        Write-Host ""
+    }
+    if ($Status -in @('running', 'documented')) {
+        Write-Head "-- 02_dynamic (what it does) --"
+        Write-Check "Results / proof noted"
+        Write-Host ""
+    }
+    if ($Status -eq 'documented') {
+        Write-Head "-- 03_findings --"
+        Write-Check "Takeaways and public-safe blurb"
+        Write-Check "Run: 30_scripts\redact-check.ps1 (no home hostnames)"
         Write-Host ""
     }
 }

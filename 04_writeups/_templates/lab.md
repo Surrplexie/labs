@@ -42,7 +42,7 @@ evidence_index:
   steps:       ../01_static/SAMPLE_ID.md
   results:     ../02_dynamic/SAMPLE_ID.md
   reflection:  ../03_findings/SAMPLE_ID.md
-  screenshots: ../50_screenshots/SAMPLE_ID/
+  screenshots: ../50_screenshots/
 ---
 
 # <FILL -- lab / module title>
@@ -82,7 +82,7 @@ evidence_index:
 |---------|------|---------|
 | 0.1 | DATE | Initial draft |
 
-> Cross-reference: [`20_notes/lab-curriculum-map.md`](../20_notes/lab-curriculum-map.md) — update the index row for this slot.
+> Cross-reference: [`20_notes/lab-curriculum-map.md`](../../20_notes/lab-curriculum-map.md) — update the index row for this slot.
 
 ---
 
@@ -156,7 +156,7 @@ Sync with `objectives_met` field in [`03_findings/SAMPLE_ID.md`](../03_findings/
 
 | Artifact | Location | Notes |
 |----------|----------|-------|
-| Completion screenshot | `50_screenshots/SAMPLE_ID/<file>` | `<FILL>` |
+| Completion screenshot | `50_screenshots/<file>` | `<FILL>` |
 | Task answer proof | `<paraphrase or hash; never the raw answer string>` | `<>` |
 
 ---
@@ -187,7 +187,7 @@ Sync with `objectives_met` field in [`03_findings/SAMPLE_ID.md`](../03_findings/
 
 ## 7. Skills delta
 
-> Compare your capability **before** and **after** this lab. Update [`20_notes/skills-coverage.md`](../20_notes/skills-coverage.md) with changes.
+> Compare your capability **before** and **after** this lab. Update [`20_notes/skills-coverage.md`](../../20_notes/skills-coverage.md) with changes.
 
 | Skill | Before | After | Evidence in this engagement |
 |-------|--------|-------|-----------------------------|
@@ -227,7 +227,7 @@ Sync with `objectives_met` field in [`03_findings/SAMPLE_ID.md`](../03_findings/
 |------|-------------|
 | `<FILL>` | `<one-line description>` |
 
-_(Full index: [`50_screenshots/SAMPLE_ID/SHOT_INDEX.txt`](../50_screenshots/SAMPLE_ID/SHOT_INDEX.txt))_
+_(Full index: [`50_screenshots/SHOT_INDEX.txt`](../50_screenshots/SHOT_INDEX.txt))_
 
 ### Appendix C — References
 

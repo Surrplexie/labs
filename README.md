@@ -17,12 +17,12 @@
 |---|---|
 | **Primary focus** | `file` — static and dynamic malware triage, IOCs in [`40_iocs/`](./40_iocs/indicators.csv), MITRE in [`20_notes/MITRE-coverage.md`](./20_notes/MITRE-coverage.md) |
 | **Secondary tracks** | `ctf`, `lab`, `hunt` — same `sample_XX` slots, same `00`→`03` folders, kind-specific templates and statuses |
-| **Finished artifact per slot** | [`03_findings/sample_XX.md`](./03_findings/sample_01.md) (feeds [`INDEX.md`](./INDEX.md)); optional long-form [`04_writeups/`](./04_writeups/README.md) |
+| **Finished artifact per slot** | [`LAB{NN}_*/03_findings/sample_XX.md`](./INDEX.md) (feeds [`INDEX.md`](./INDEX.md)); optional long-form [`04_writeups/`](./04_writeups/README.md) |
 | **Not a second logbook** | One tracker, one validator, one export — [`export-summary.ps1`](./30_scripts/export-summary.ps1) groups [`INDEX.md`](./INDEX.md) by kind |
 
 **How reviewers should read it:** open [`INDEX.md`](./INDEX.md) → **File analyses** first for malware portfolio depth → **CTF write-ups**, **Labs**, and **Threat hunts** as separate labelled sections. Do not expect every slot to be a MalwareBazaar sample.
 
-**Slot convention (recommended):** `sample_01`–`30` file · `31`–`40` ctf · `41`–`45` lab · `46`–`50` hunt — see [`ENGAGEMENTS.md`](./ENGAGEMENTS.md#slot-reservation--tier-1-conventions).
+**Slot convention (recommended):** `01–30` file · `31–40` ctf · `41–45` lab · `46–50` hunt · `51–70` school · `71–85` homelab — see [`ENGAGEMENTS.md`](./ENGAGEMENTS.md#slot-reservation--tier-1-conventions).
 
 ---
 
@@ -92,7 +92,7 @@ See [`ENGAGEMENTS.md`](./ENGAGEMENTS.md) for the complete kind reference and [`W
 |---|---|
 | See all engagements at a glance | [`INDEX.md`](./INDEX.md) |
 | Find by tag, MITRE technique, or kind | [`INDEX.md`](./INDEX.md) cross-reference sections |
-| Read a specific engagement's findings | `03_findings/sample_XX.md` |
+| Read a specific engagement's findings | `LAB{NN}_*/03_findings/sample_XX.md` |
 | Write a long-form narrative report | [`04_writeups/`](./04_writeups/README.md) — kind templates + `scaffold_writeup.ps1` / `-WithLongWriteup` |
 | Understand how all engagement kinds work | [`ENGAGEMENTS.md`](./ENGAGEMENTS.md) |
 | See which ATT&CK techniques are covered | [`20_notes/MITRE-coverage.md`](./20_notes/MITRE-coverage.md) |
@@ -115,89 +115,38 @@ See [`ENGAGEMENTS.md`](./ENGAGEMENTS.md) for the complete kind reference and [`W
 labs/
 |
 |-- README.md                    <- You are here
-|-- INDEX.md                     <- Auto-generated sample index (run export-summary.ps1)
+|-- INDEX.md                     <- Auto-generated index (run export-summary.ps1)
 |-- WORKFLOW.md                  <- Full step-by-step guide (Tracks A/B/C/D)
 |-- ENGAGEMENTS.md              <- Engagement kinds reference (file/ctf/lab/hunt)
-|-- RELEASE-VERIFICATION.md     <- Binary checksum verification and release policy
-|-- RELEASE-TAGGING.md          <- When/how to tag vX.Y.Z for workflow_gui releases
-|-- LICENSE                      <- MIT License
-|-- .gitignore                   <- Blocks executables, archives, secrets, OS noise
-|-- samples_tracker.csv          <- One row per slot: sha256, url, name, status
+|-- samples_tracker.csv          <- One row per slot + lab_folder
 |
-|-- 00_original/                 <- Acquisition receipts (MalwareBazaar metadata, hashes)
-|   |-- README.md                <- Folder guide
-|   |-- sample_01.md             <- Sample-specific acquisition log
-|   `-- sample_02.md ... 06.md   <- Reserve slots (empty)
+|-- LAB01_Updater_v2.211/        <- ONE folder per engagement (open this and stay)
+|   |-- README.md                <- Cockpit: flow 00 -> 03
+|   |-- 00_original/             <- Receipt / brief
+|   |-- 01_static/               <- Static / recon / steps / collection
+|   |-- 02_dynamic/              <- Dynamic / solve / results / analysis
+|   |-- 03_findings/             <- Verdict / writeup / reflection / outcome
+|   |-- 04_writeups/             <- Optional long-form report
+|   |-- 10_extracted/            <- Non-executable extracts
+|   |-- 20_notes/                <- Scratch notes for THIS lab
+|   |-- 30_scripts/              <- Pointer to repo-root scripts
+|   |-- 40_iocs/                 <- Pointer to global IOC CSV
+|   |-- 45_hunt_queries/         <- Queries used in THIS lab
+|   `-- 50_screenshots/          <- Evidence for THIS lab
 |
-|-- 01_static/                   <- Static triage notes (DIE, PEStudio, CFF, HxD)
-|   |-- sample_01.md             <- Completed static analysis
-|   `-- sample_02.md ... 06.md   <- Reserve slots (empty templates)
-|
-|-- 02_dynamic/                  <- Dynamic triage notes (Procmon, ProcExp, network)
-|   |-- sample_01.md             <- Partial dynamic (screenshot evidence)
-|   `-- sample_02.md ... 06.md   <- Reserve slots (empty templates)
-|
-|-- 03_findings/                 <- Verdicts, IOC tables, portfolio blurbs
-|   |-- sample_01.md             <- Completed findings with YAML frontmatter
-|   `-- sample_02.md ... 06.md   <- Reserve slots (YAML stub + empty sections)
-|
-|-- 04_writeups/                 <- Optional deep narrative reports (not validated per slot)
-|   |-- README.md                <- When to use vs 03_findings
-|   `-- sample_01.md … sample_50.md  <- Long-form writeup scaffold (same ID as other phases)
-|
-|-- 10_extracted/                <- Non-executable artifacts (string dumps, NSIS scripts)
-|   `-- README.md
-|
-|-- 20_notes/                    <- Cross-engagement synthesis (malware + ctf + lab + hunt)
-|   |-- README.md
-|   |-- MITRE-coverage.md        <- ATT&CK (file kind)
-|   |-- tooling-reference.md     <- Malware VM tools
-|   |-- ctf-tooling-reference.md <- CTF / HTB / THM tools
-|   |-- hunt-reference.md        <- Hunt methodology and event IDs
-|   |-- ctf-machine-index.md     <- CTF machine -> sample_XX tracker
-|   |-- lab-curriculum-map.md    <- Course lab -> sample_XX tracker
-|   |-- detection-catalog.md     <- Detection ideas (file + hunt)
-|   |-- skills-coverage.md       <- Skills practiced (all kinds)
-|   |-- case-series/             <- Malware pattern notes
-|   `-- ctf-patterns/            <- CTF technique pattern notes
-|
-|-- 45_hunt_queries/             <- Reusable sanitized hunt queries (hunt kind)
-|   |-- README.md
-|   |-- INDEX.md
-|   `-- _examples/
-|
-|-- 30_scripts/                  <- PowerShell lifecycle and hygiene automation
-|   |-- README.md                <- Script documentation and usage examples
-|   |-- new_engagement.ps1       <- Scaffold slot (file / ctf / lab / hunt)
-|   |-- new_sample.ps1           <- Alias for new_engagement.ps1 -Kind file
-|   |-- close_sample.ps1         <- Advance status, print close checklist
-|   |-- validate.ps1             <- Structural integrity (19 checks, kind-aware)
-|   |-- export-summary.ps1       <- Regenerate INDEX.md + dist/summary.json
-|   |-- redact-check.ps1         <- Scan for PII / non-VM paths before committing
-|   |-- strip-exif.ps1           <- Strip EXIF metadata from screenshots
-|   |-- ingest-procmon.ps1       <- Parse Procmon CSV -> Markdown tables + IOC candidates
-|   |-- ingest-events.ps1        <- Parse SIEM/Sysmon CSV -> hunt timeline in 02_dynamic
-|   |-- workflow_gui.py          <- Cross-platform GUI (all engagement kinds)
-|   |-- build_exe.ps1            <- Build workflow_gui.exe (pinned PyInstaller + SHA256SUMS)
-|   |-- build_linux.sh           <- Build workflow_gui Linux binary (pinned + SHA256SUMS)
-|   |-- build_requirements.txt   <- Single source of truth for PyInstaller pin
-|   |-- tag_release.ps1          <- Preflight + annotated vX.Y.Z tag for GitHub Release
-|   |-- install-hooks.ps1        <- Install pre-push Git hook (Windows)
-|   |-- install-hooks.sh         <- Install pre-push Git hook (Linux)
-|   |-- WORKFLOW-GUI.md          <- GUI usage guide and disclaimers
-|   `-- schema/                  <- JSON Schemas for frontmatter and summary.json
-|
-|-- 40_iocs/                     <- Consolidated IOC CSV
-|   |-- README.md                <- Schema documentation
-|   `-- indicators.csv           <- All IOCs from all samples, flat table
-|
-`-- 50_screenshots/              <- Screenshot evidence, keyed by sample ID
-    |-- sample_01/               <- Completed: IMG_6038-6042.png + SHOT_INDEX.txt
-    |-- sample_02/ ... 06/       <- Reserve: .gitkeep + SHOT_INDEX.txt (empty)
-    `-- (each folder has SHOT_INDEX.txt with hygiene checklist)
+|-- 04_writeups/                 <- Shared long-form templates + writeup INDEX
+|-- 20_notes/                    <- Cross-engagement catalogs (MITRE, tooling, skills)
+|-- 30_scripts/                  <- Scaffold / validate / export / GUI (once)
+|-- 40_iocs/                     <- Aggregated indicators.csv (all labs)
+|-- 45_hunt_queries/             <- Reusable hunt query library
+|-- Docs/                        <- Remediations, deferred items
+`-- dist/                        <- workflow_gui binary (do not hand-edit)
 ```
 
-**Naming convention:** `sample_01` through `sample_99` (zero-padded) — the same ID runs across every phase folder for consistent cross-referencing. Optional long-form scaffolds live under `04_writeups/` as `sample_01.md`–`sample_50.md` (not part of the four-phase validator).
+**How to start a lab:** run `new_engagement.ps1` → open the new `LAB{NN}_{slug}\` folder → work `00` → `01` → `02` → `03`. Do not scatter notes across the repo root.
+
+**Naming:** `LAB01_…`, `LAB02_…` (zero-padded so Explorer sorts). Slot id `sample_XX` still keys the tracker, validator, and `INDEX.md`.
+
 
 ---
 

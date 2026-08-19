@@ -81,6 +81,7 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+. (Join-Path $PSScriptRoot '_paths.ps1')
 
 # ---------------------------------------------------------------------------
 # Normalise SampleId
@@ -100,9 +101,9 @@ if (-not (Test-Path $EventCsv)) {
     exit 1
 }
 
-$dynFile = Join-Path $Root "02_dynamic\$SampleId.md"
+$dynFile = Get-PhaseFilePath -Root $Root -SampleId $SampleId -Phase '02_dynamic'
 if (-not (Test-Path $dynFile)) {
-    Write-Host "[ERROR] 02_dynamic\$SampleId.md not found. Run new_engagement.ps1 first." -ForegroundColor Red
+    Write-Host "[ERROR] 02_dynamic\$SampleId.md not found under a LAB folder. Run new_engagement.ps1 first." -ForegroundColor Red
     exit 1
 }
 

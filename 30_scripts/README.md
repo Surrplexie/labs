@@ -13,7 +13,9 @@ All scripts require PowerShell 5.1+ and run from anywhere (they resolve the repo
 | Script | Purpose | When to run |
 |--------|---------|-------------|
 | `workflow_gui.py` | GUI: autofill phase files from pasted metadata (all engagement kinds) | Optional; alternative to `new_engagement.ps1` |
-| `new_engagement.ps1` | Scaffold any engagement slot (`file`, `ctf`, `lab`, `hunt`); optional `-WithLongWriteup` | Before starting any engagement |
+| `new_engagement.ps1` | Scaffold any engagement slot (`file`, `ctf`, `lab`, `school`, `homelab`, `hunt`); optional `-Course` + `-WithLongWriteup` | Before starting |
+| `open_session.ps1` | Open lab folder + `CAPTURE.md` + linked Notes course | While taking notes |
+| `link_notes.ps1` | Point a lab at `Downloads\Notes\<course>` | School / class labs |
 | `scaffold_writeup.ps1` | Kind-specific `04_writeups/sample_XX.md` from `_templates/` | Optional portfolio-deep report |
 | `new_hunt_query.ps1` | Scaffold `45_hunt_queries/<slug>.md` (SPL/KQL/Sigma) | Reusable hunt query library |
 | `new_sample.ps1` | Backward-compatible alias for `new_engagement.ps1 -Kind file` | Legacy; prefer `new_engagement.ps1` |
@@ -78,13 +80,14 @@ powershell -ExecutionPolicy Bypass -File .\30_scripts\new_engagement.ps1 -NextNu
 | `-WithLongWriteup` | off | Also scaffold `04_writeups/sample_XX.md` from `_templates/{Kind}.md` |
 
 **Files created:**
-- `00_original/sample_XX.md` -- acquisition receipt or brief
-- `01_static/sample_XX.md` -- kind-specific phase 2 template
-- `02_dynamic/sample_XX.md` -- kind-specific phase 3 template
-- `03_findings/sample_XX.md` -- YAML frontmatter with `engagement_kind` + seeded fields
-- `50_screenshots/sample_XX/SHOT_INDEX.txt` -- screenshot map
-- `samples_tracker.csv` -- new row with `engagement_kind`, `date_started`, status
-- `04_writeups/sample_XX.md` -- only with `-WithLongWriteup` (kind-specific long-form template)
+- `LAB{NN}_{slug}/` -- one folder for the whole engagement (open it and stay)
+- `LAB{NN}_{slug}/00_original/sample_XX.md` -- acquisition receipt or brief
+- `LAB{NN}_{slug}/01_static/sample_XX.md` -- kind-specific phase 2 template
+- `LAB{NN}_{slug}/02_dynamic/sample_XX.md` -- kind-specific phase 3 template
+- `LAB{NN}_{slug}/03_findings/sample_XX.md` -- YAML frontmatter with `engagement_kind` + seeded fields
+- `LAB{NN}_{slug}/50_screenshots/SHOT_INDEX.txt` -- screenshot map
+- `samples_tracker.csv` -- new row with `lab_folder`, `engagement_kind`, `date_started`, status
+- `LAB{NN}_{slug}/04_writeups/sample_XX.md` -- only with `-WithLongWriteup`
 
 ---
 

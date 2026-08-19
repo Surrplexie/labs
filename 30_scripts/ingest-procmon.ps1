@@ -85,6 +85,7 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+. (Join-Path $PSScriptRoot '_paths.ps1')
 
 # ---------------------------------------------------------------------------
 # Validate inputs
@@ -102,11 +103,11 @@ if (-not (Test-Path $ProcmonCsv)) {
     exit 1
 }
 
-$dynamicFile = Join-Path $Root "02_dynamic\$normalizedId.md"
+$dynamicFile = Get-PhaseFilePath -Root $Root -SampleId $normalizedId -Phase '02_dynamic'
 $iocFile     = Join-Path $Root '40_iocs\indicators.csv'
 
 if (-not (Test-Path $dynamicFile)) {
-    Write-Error "02_dynamic\$normalizedId.md not found. Run new_sample.ps1 first."
+    Write-Error "02_dynamic\$normalizedId.md not found under a LAB folder. Run new_engagement.ps1 first."
     exit 1
 }
 

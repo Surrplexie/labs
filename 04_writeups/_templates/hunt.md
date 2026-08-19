@@ -42,9 +42,9 @@ evidence_index:
   collection:   ../01_static/SAMPLE_ID.md
   analysis:     ../02_dynamic/SAMPLE_ID.md
   outcome:      ../03_findings/SAMPLE_ID.md
-  screenshots:  ../50_screenshots/SAMPLE_ID/
-  hunt_queries: ../45_hunt_queries/
-  iocs_csv:     ../40_iocs/indicators.csv
+  screenshots:  ../50_screenshots/
+  hunt_queries: ../../45_hunt_queries/
+  iocs_csv:     ../../40_iocs/indicators.csv
 ---
 
 # <FILL -- hunt title>
@@ -116,7 +116,7 @@ Canonical scope: [`00_original/SAMPLE_ID.md`](../00_original/SAMPLE_ID.md)
 ## 3. Data and queries
 
 > Collection log: [`01_static/SAMPLE_ID.md`](../01_static/SAMPLE_ID.md).
-> Reusable query library: [`45_hunt_queries/`](../45_hunt_queries/README.md) · [`20_notes/hunt-reference.md`](../20_notes/hunt-reference.md)
+> Reusable query library: [`45_hunt_queries/`](../../45_hunt_queries/README.md) · [`20_notes/hunt-reference.md`](../../20_notes/hunt-reference.md)
 
 ### Data sources used
 
@@ -141,7 +141,7 @@ Canonical scope: [`00_original/SAMPLE_ID.md`](../00_original/SAMPLE_ID.md)
 <FILL -- query body; no real index names, hostnames, or SAM accounts>
 ```
 
-> Promote reusable queries to [`45_hunt_queries/`](../45_hunt_queries/README.md) using `new_hunt_query.ps1`.
+> Promote reusable queries to [`45_hunt_queries/`](../../45_hunt_queries/README.md) using `new_hunt_query.ps1`.
 
 ---
 
@@ -185,7 +185,7 @@ Canonical scope: [`00_original/SAMPLE_ID.md`](../00_original/SAMPLE_ID.md)
 
 ### Confirmed IOCs (for `40_iocs`)
 
-> Add rows to [`40_iocs/indicators.csv`](../40_iocs/indicators.csv) **only for confirmed hunt IOCs** in this environment.
+> Add rows to [`40_iocs/indicators.csv`](../../40_iocs/indicators.csv) **only for confirmed hunt IOCs** in this environment.
 
 | Type | Value (sanitized) | Confidence | Notes |
 |------|-------------------|------------|-------|
@@ -205,7 +205,7 @@ Canonical scope: [`00_original/SAMPLE_ID.md`](../00_original/SAMPLE_ID.md)
 
 ## 7. Detection engineering
 
-> See [`20_notes/detection-catalog.md`](../20_notes/detection-catalog.md) for cross-engagement detection tracking.
+> See [`20_notes/detection-catalog.md`](../../20_notes/detection-catalog.md) for cross-engagement detection tracking.
 
 ### Proposed detection
 
@@ -235,7 +235,7 @@ Canonical scope: [`00_original/SAMPLE_ID.md`](../00_original/SAMPLE_ID.md)
 # level: medium
 ```
 
-> Promote finalized rules to [`45_hunt_queries/`](../45_hunt_queries/README.md).
+> Promote finalized rules to [`45_hunt_queries/`](../../45_hunt_queries/README.md).
 
 ### MITRE ATT&CK mapping
 
@@ -282,7 +282,7 @@ Canonical scope: [`00_original/SAMPLE_ID.md`](../00_original/SAMPLE_ID.md)
 |------|-------------|
 | `<FILL>` | `<one-line description>` |
 
-_(Full index: [`50_screenshots/SAMPLE_ID/SHOT_INDEX.txt`](../50_screenshots/SAMPLE_ID/SHOT_INDEX.txt))_
+_(Full index: [`50_screenshots/SHOT_INDEX.txt`](../50_screenshots/SHOT_INDEX.txt))_
 
 ### Appendix C — References
 

@@ -147,22 +147,24 @@ powershell -ExecutionPolicy Bypass -File .\30_scripts\new_sample.ps1 -NextNumber
 ### What this creates
 
 ```
-00_original/sample_07.md        <- acquisition receipt (fill this next)
-01_static/sample_07.md          <- static triage (fill during VM static pass)
-02_dynamic/sample_07.md         <- dynamic triage (fill after execution)
-03_findings/sample_07.md        <- verdict + IOCs + portfolio blurb (fill last)
-50_screenshots/sample_07/
-  SHOT_INDEX.txt                <- screenshot map + evidence hygiene checklist
-samples_tracker.csv             <- new row: sample_07, status = queued
+LAB07_<slug>/                   <- open this folder and stay here
+  README.md                     <- cockpit
+  00_original/sample_07.md      <- acquisition receipt (fill this next)
+  01_static/sample_07.md        <- static triage
+  02_dynamic/sample_07.md       <- dynamic triage
+  03_findings/sample_07.md      <- verdict + IOCs (fill last)
+  50_screenshots/SHOT_INDEX.txt
+  (plus 04_writeups, 10_extracted, 20_notes, 40_iocs, 45_hunt_queries)
+samples_tracker.csv             <- new row: sample_07, lab_folder, status = queued
 ```
 
 ### Verify it worked
 
 ```powershell
-# Should show all four .md files and the screenshot folder
-Get-ChildItem .\00_original\sample_07.md, .\01_static\sample_07.md,
-              .\02_dynamic\sample_07.md, .\03_findings\sample_07.md
-Get-Item .\50_screenshots\sample_07\
+# Should show the lab folder and phase files
+Get-ChildItem .\LAB07_*\00_original\sample_07.md, .\LAB07_*\01_static\sample_07.md,
+              .\LAB07_*\02_dynamic\sample_07.md, .\LAB07_*\03_findings\sample_07.md
+Get-Item .\LAB07_*\50_screenshots\
 ```
 
 ---

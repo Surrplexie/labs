@@ -49,6 +49,7 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+. (Join-Path $PSScriptRoot '_paths.ps1')
 
 # ---------------------------------------------------------------------------
 # MITRE technique name lookup
@@ -186,8 +187,14 @@ foreach ($row in $tracker) {
     $dateClosed  = if ($cols -contains 'date_closed')  { $row.date_closed.Trim()  } else { '' }
     $scoreFlag   = if ($cols -contains 'score_flag')   { $row.score_flag.Trim()   } else { '' }
 
-    $findingsFile = Join-Path $Root "03_findings\$id.md"
+    $findingsFile = Get-PhaseFilePath -Root $Root -SampleId $id -Phase '03_findings' -TrackerRow $row
     $fm           = Read-Frontmatter -FilePath $findingsFile
+    $labDir       = Get-LabDir -Root $Root -SampleId $id -TrackerRow $row
+    $findingsRel  = if ($labDir -and ($labDir -ne $Root)) {
+        "$(Split-Path $labDir -Leaf)/03_findings/$id.md"
+    } else {
+        "03_findings/$id.md"
+    }
 
     $tags   = if ($fm.ContainsKey('tags'))             { [string[]]$fm['tags'] }             else { @() }
     $mitre  = if ($fm.ContainsKey('mitre_techniques')) { [string[]]$fm['mitre_techniques'] } else { @() }
@@ -233,6 +240,7 @@ foreach ($row in $tracker) {
         mitre_techniques  = $mitre
         skills            = $skills
         has_frontmatter   = ($fm.Count -gt 0)
+        findings_rel      = $findingsRel
     }
 
     $records.Add($rec)
@@ -241,10 +249,12 @@ foreach ($row in $tracker) {
 $activeRecs  = @($records | Where-Object { $_['status'] -ne 'empty' })
 $reserveRecs = @($records | Where-Object { $_['status'] -eq 'empty' })
 
-$fileRecs  = @($activeRecs | Where-Object { $_['engagement_kind'] -eq 'file' })
-$ctfRecs   = @($activeRecs | Where-Object { $_['engagement_kind'] -eq 'ctf' })
-$labRecs   = @($activeRecs | Where-Object { $_['engagement_kind'] -eq 'lab' })
-$huntRecs  = @($activeRecs | Where-Object { $_['engagement_kind'] -eq 'hunt' })
+$fileRecs     = @($activeRecs | Where-Object { $_['engagement_kind'] -eq 'file' })
+$ctfRecs      = @($activeRecs | Where-Object { $_['engagement_kind'] -eq 'ctf' })
+$labRecs      = @($activeRecs | Where-Object { $_['engagement_kind'] -eq 'lab' })
+$huntRecs     = @($activeRecs | Where-Object { $_['engagement_kind'] -eq 'hunt' })
+$schoolRecs   = @($activeRecs | Where-Object { $_['engagement_kind'] -eq 'school' })
+$homelabRecs  = @($activeRecs | Where-Object { $_['engagement_kind'] -eq 'homelab' })
 
 # ---------------------------------------------------------------------------
 # Output 1: dist/summary.json
@@ -284,7 +294,7 @@ if (-not $SkipJson -and -not $SkipPortfolio) {
     $portfolioRecs = [System.Collections.Generic.List[hashtable]]::new()
     foreach ($rec in $activeRecs) {
         $sid  = $rec['sample_id']
-        $fPath = Join-Path $Root "03_findings\$sid.md"
+        $fPath = Get-PhaseFilePath -Root $Root -SampleId $sid -Phase '03_findings'
         $fm2   = Read-Frontmatter -FilePath $fPath
         $safe  = if ($fm2.ContainsKey('public_writeup_safe')) { $fm2['public_writeup_safe'] } else { 'false' }
         if ($safe -eq 'true') {
@@ -337,7 +347,7 @@ $null = $sb.AppendLine('')
 $null = $sb.AppendLine('# Logbook Index')
 $null = $sb.AppendLine('')
 $null = $sb.AppendLine('> Auto-generated index. Run `30_scripts/export-summary.ps1` to refresh.')
-$null = $sb.AppendLine('> Edit YAML frontmatter in `03_findings/sample_XX.md` to update metadata.')
+$null = $sb.AppendLine('> Edit YAML frontmatter in each lab `03_findings/sample_XX.md` to update metadata.')
 $null = $sb.AppendLine('')
 $null = $sb.AppendLine('---')
 $null = $sb.AppendLine('')
@@ -352,6 +362,8 @@ $null = $sb.AppendLine("| Active engagements | $activeCount |")
 $null = $sb.AppendLine("| File analyses | $($fileRecs.Count) |")
 $null = $sb.AppendLine("| CTF write-ups | $($ctfRecs.Count) |")
 $null = $sb.AppendLine("| Labs | $($labRecs.Count) |")
+$null = $sb.AppendLine("| School | $($schoolRecs.Count) |")
+$null = $sb.AppendLine("| Homelabs | $($homelabRecs.Count) |")
 $null = $sb.AppendLine("| Threat hunts | $($huntRecs.Count) |")
 $null = $sb.AppendLine("| Reserve slots | $($reserveRecs.Count) |")
 $null = $sb.AppendLine("| IOCs logged (file kind) | $totalIoc |")
@@ -383,11 +395,13 @@ if ($activeCount -gt 0) {
         $outcomeCol = switch ($kindCol) {
             'file'  { if ($r['verdict']) { $r['verdict'] } else { 'unknown' } }
             'ctf'   { if ($r['solved'] -eq 'true') { 'solved' } else { $r['status'] } }
-            'lab'   { if ($r['objectives_met'] -eq 'true') { 'objectives met' } else { $r['status'] } }
+            'lab'     { if ($r['objectives_met'] -eq 'true') { 'objectives met' } else { $r['status'] } }
+            'school'  { if ($r['objectives_met'] -eq 'true') { 'objectives met' } else { $r['status'] } }
+            'homelab' { $r['status'] }
             'hunt'  { if ($r['detections_found'] -eq 'true') { 'detection' } else { $r['status'] } }
             default { $r['status'] }
         }
-        $link     = "[link](03_findings/$sid.md)"
+        $link     = "[link]($($r['findings_rel']))"
         $null = $sb.AppendLine("| ``$sid`` | $kindCol | $nt | $platCol | $($r['status']) | $outcomeCol | $link |")
     }
 
@@ -410,7 +424,7 @@ if ($fileRecs.Count -gt 0) {
         $fam  = if ($r['family_guess'])      { $r['family_guess'] }      else { '(unset)' }
         $conf = if ($r['family_confidence']) { $r['family_confidence'] } else { '(unset)' }
         $iocN = $r['ioc_count']
-        $null = $sb.AppendLine("| [``$sid``](03_findings/$sid.md) | $nt | $($r['status']) | $vd | $fam | $conf | $iocN |")
+        $null = $sb.AppendLine("| [``$sid``]($($r['findings_rel'])) | $nt | $($r['status']) | $vd | $fam | $conf | $iocN |")
     }
 
     $null = $sb.AppendLine('')
@@ -432,7 +446,7 @@ if ($ctfRecs.Count -gt 0) {
         $cat    = if ($r['category'])   { $r['category'] }   else { '-' }
         $diff   = if ($r['difficulty']) { $r['difficulty'] } else { '-' }
         $solved = if ($r['solved'] -eq 'true') { 'Yes' } else { 'No' }
-        $null = $sb.AppendLine("| [``$sid``](03_findings/$sid.md) | $nt | $plat | $cat | $diff | $solved | $($r['status']) |")
+        $null = $sb.AppendLine("| [``$sid``]($($r['findings_rel'])) | $nt | $plat | $cat | $diff | $solved | $($r['status']) |")
     }
 
     $null = $sb.AppendLine('')
@@ -452,7 +466,45 @@ if ($labRecs.Count -gt 0) {
         $nt   = if ($r['name_tag']) { $r['name_tag'] } else { '(unset)' }
         $crs  = if ($r['course'])   { $r['course'] }   else { '-' }
         $met  = if ($r['objectives_met'] -eq 'true') { 'Yes' } else { 'No' }
-        $null = $sb.AppendLine("| [``$sid``](03_findings/$sid.md) | $nt | $crs | $met | $($r['status']) |")
+        $null = $sb.AppendLine("| [``$sid``]($($r['findings_rel'])) | $nt | $crs | $met | $($r['status']) |")
+    }
+
+    $null = $sb.AppendLine('')
+    $null = $sb.AppendLine('---')
+    $null = $sb.AppendLine('')
+}
+
+# ---- School section ----
+if ($schoolRecs.Count -gt 0) {
+    $null = $sb.AppendLine('## School')
+    $null = $sb.AppendLine('')
+    $null = $sb.AppendLine('| ID | Title | Course | Objectives met | Status |')
+    $null = $sb.AppendLine('|---|---|---|---|---|')
+
+    foreach ($r in $schoolRecs) {
+        $sid  = $r['sample_id']
+        $nt   = if ($r['name_tag']) { $r['name_tag'] } else { '(unset)' }
+        $crs  = if ($r['course'])   { $r['course'] }   else { if ($r['platform']) { $r['platform'] } else { '-' } }
+        $met  = if ($r['objectives_met'] -eq 'true') { 'Yes' } else { 'No' }
+        $null = $sb.AppendLine("| [``$sid``]($($r['findings_rel'])) | $nt | $crs | $met | $($r['status']) |")
+    }
+
+    $null = $sb.AppendLine('')
+    $null = $sb.AppendLine('---')
+    $null = $sb.AppendLine('')
+}
+
+# ---- Homelabs section ----
+if ($homelabRecs.Count -gt 0) {
+    $null = $sb.AppendLine('## Homelabs')
+    $null = $sb.AppendLine('')
+    $null = $sb.AppendLine('| ID | Title | Status |')
+    $null = $sb.AppendLine('|---|---|---|')
+
+    foreach ($r in $homelabRecs) {
+        $sid  = $r['sample_id']
+        $nt   = if ($r['name_tag']) { $r['name_tag'] } else { '(unset)' }
+        $null = $sb.AppendLine("| [``$sid``]($($r['findings_rel'])) | $nt | $($r['status']) |")
     }
 
     $null = $sb.AppendLine('')
@@ -472,7 +524,7 @@ if ($huntRecs.Count -gt 0) {
         $hyp  = if ($r['hypothesis']) { $r['hypothesis'] } else { if ($r['name_tag']) { $r['name_tag'] } else { '(unset)' } }
         $det  = if ($r['detections_found'] -eq 'true') { 'Yes' } else { 'No' }
         $conf = if ($r['confidence']) { $r['confidence'] } else { '-' }
-        $null = $sb.AppendLine("| [``$sid``](03_findings/$sid.md) | $hyp | $det | $conf | $($r['status']) |")
+        $null = $sb.AppendLine("| [``$sid``]($($r['findings_rel'])) | $hyp | $det | $conf | $($r['status']) |")
     }
 
     $null = $sb.AppendLine('')
@@ -501,7 +553,7 @@ if ($allSkills.Count -gt 0) {
             $sid = $r['sample_id']
             $nt  = if ($r['name_tag']) { $r['name_tag'] } else { '(unset)' }
             $knd = $r['engagement_kind']
-            $null = $sb.AppendLine("- [``$sid``](03_findings/$sid.md) [$knd] -- $nt")
+            $null = $sb.AppendLine("- [``$sid``]($($r['findings_rel'])) [$knd] -- $nt")
         }
         $null = $sb.AppendLine('')
     }
@@ -532,7 +584,7 @@ if ($platformRecs.Count -gt 0) {
             $sid = $r['sample_id']
             $nt  = if ($r['name_tag']) { $r['name_tag'] } else { '(unset)' }
             $knd = $r['engagement_kind']
-            $null = $sb.AppendLine("- [``$sid``](03_findings/$sid.md) [$knd] -- $nt")
+            $null = $sb.AppendLine("- [``$sid``]($($r['findings_rel'])) [$knd] -- $nt")
         }
         $null = $sb.AppendLine('')
     }
@@ -558,7 +610,7 @@ if ($allTags.Count -gt 0) {
             $sid    = $r['sample_id']
             $nt     = if ($r['name_tag']) { $r['name_tag'] } else { '(unset)' }
             $knd    = $r['engagement_kind']
-            $null = $sb.AppendLine("- [``$sid``](03_findings/$sid.md) [$knd] -- $nt")
+            $null = $sb.AppendLine("- [``$sid``]($($r['findings_rel'])) [$knd] -- $nt")
         }
         $null = $sb.AppendLine('')
     }
@@ -589,7 +641,7 @@ if ($allMitre.Count -gt 0) {
             $sid = $r['sample_id']
             $nt  = if ($r['name_tag']) { $r['name_tag'] } else { '(unset)' }
             $fam = if ($r['family_guess']) { $r['family_guess'] } else { $r['verdict'] }
-            $null = $sb.AppendLine("- [``$sid``](03_findings/$sid.md) - $nt ($fam)")
+            $null = $sb.AppendLine("- [``$sid``]($($r['findings_rel'])) - $nt ($fam)")
         }
         $null = $sb.AppendLine('')
     }
@@ -616,9 +668,9 @@ if ($reserveRecs.Count -gt 0) {
     $null = $sb.AppendLine('')
 }
 
-$null = $sb.AppendLine('*Auto-generated -- edit frontmatter in `03_findings/sample_XX.md` and re-run `export-summary.ps1` to update.*')
+$null = $sb.AppendLine('*Auto-generated -- edit frontmatter in each lab `03_findings/sample_XX.md` and re-run `export-summary.ps1` to update.*')
 
 $indexPath = Join-Path $Root 'INDEX.md'
 $sb.ToString() | Set-Content -Path $indexPath -Encoding UTF8
 Write-Host "[export] Wrote $indexPath" -ForegroundColor Green
-Write-Host "[export] Done. $($records.Count) records ($activeCount active: $($fileRecs.Count) file / $($ctfRecs.Count) ctf / $($labRecs.Count) lab / $($huntRecs.Count) hunt -- $($reserveRecs.Count) reserve)." -ForegroundColor Cyan
+Write-Host "[export] Done. $($records.Count) records ($activeCount active: $($fileRecs.Count) file / $($ctfRecs.Count) ctf / $($labRecs.Count) lab / $($schoolRecs.Count) school / $($homelabRecs.Count) homelab / $($huntRecs.Count) hunt -- $($reserveRecs.Count) reserve)." -ForegroundColor Cyan

@@ -8,8 +8,10 @@
 
 | Layer | File | Role | Audience |
 |-------|------|------|----------|
-| **Required** | `03_findings/sample_XX.md` | Verdict / outcome · IOC slice · portfolio blurb · YAML for `INDEX.md` | Recruiters, automation, `export-summary.ps1` |
-| **Optional** | `04_writeups/sample_XX.md` | Long-form story: hiring packet, walkthrough, course narrative, detection write-up | Humans reading for depth |
+| **Required** | `LAB{NN}_*/03_findings/sample_XX.md` | Verdict / outcome · IOC slice · portfolio blurb · YAML for `INDEX.md` | Recruiters, automation, `export-summary.ps1` |
+| **Optional** | `LAB{NN}_*/04_writeups/sample_XX.md` | Long-form story: hiring packet, walkthrough, course narrative, detection write-up | Humans reading for depth |
+
+Shared templates stay at repo-root `04_writeups/_templates/`. Scaffold writes into the lab folder.
 
 `04` **pulls from** `00`–`03` via short summaries and `evidence_index` links. It does not duplicate entire phase logs.
 

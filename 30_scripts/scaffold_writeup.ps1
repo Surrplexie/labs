@@ -40,7 +40,7 @@ param(
     [ValidateRange(1, 99)]
     [int]$NextNumber = 0,
 
-    [ValidateSet('file', 'ctf', 'lab', 'hunt', 'stub')]
+    [ValidateSet('file', 'ctf', 'lab', 'hunt', 'school', 'homelab', 'stub')]
     [string]$Kind,
 
     [string]$Analyst  = 'Surrplexie',
@@ -53,8 +53,9 @@ param(
 $ErrorActionPreference = 'Stop'
 
 $root = Split-Path -Parent $PSScriptRoot
-if (-not (Test-Path (Join-Path $root '04_writeups'))) {
-    Write-Error "Cannot find 04_writeups under repo root: $root"
+. (Join-Path $PSScriptRoot '_paths.ps1')
+if (-not (Test-Path (Join-Path $root 'samples_tracker.csv'))) {
+    Write-Error "Cannot find samples_tracker.csv under repo root: $root"
     exit 1
 }
 
@@ -79,18 +80,36 @@ if (-not $Kind -and (Test-Path $csvPath)) {
 }
 if (-not $Kind) { $Kind = 'file' }
 
-$templateFile  = if ($Kind -eq 'stub') { '_stub.md' } else { "$Kind.md" }
+$templateKind = $Kind
+if ($Kind -in @('school', 'homelab') -and -not (Test-Path (Join-Path $root "04_writeups\_templates\$Kind.md"))) {
+    $templateKind = 'lab'
+}
+$templateFile  = if ($Kind -eq 'stub') { '_stub.md' } else { "$templateKind.md" }
 $templatePath = Join-Path $root "04_writeups\_templates\$templateFile"
 if (-not (Test-Path $templatePath)) {
     Write-Error "Template not found: $templatePath (kind=$Kind)"
     exit 1
 }
 
-$outDir  = Join-Path $root '04_writeups'
+$trackerRow = $null
+if (Test-Path $csvPath) {
+    $trackerRow = Import-Csv $csvPath | Where-Object { $_.sample_id -eq $SampleId } | Select-Object -First 1
+}
+
+$labDir = Get-LabDir -Root $root -SampleId $SampleId -TrackerRow $trackerRow
+if (-not $labDir -or $labDir -eq $root) {
+    $n = Get-SampleNumber $SampleId
+    $titleHint = if ($Title) { $Title } elseif ($trackerRow -and $trackerRow.name_tag) { $trackerRow.name_tag } else { '' }
+    $labName = Get-LabFolderName -Number $n -Title $titleHint
+    $labDir = Join-Path $root $labName
+    New-LabSkeleton -LabDir $labDir -SampleId $SampleId -Kind $Kind -Title $titleHint -LabName $labName
+}
+
+$outDir  = Join-Path $labDir '04_writeups'
 $outPath = Join-Path $outDir "$SampleId.md"
 
 if ((Test-Path $outPath) -and -not $Overwrite) {
-    Write-Warning "04_writeups\$SampleId.md already exists. Use -Overwrite to replace."
+    Write-Warning "$(Split-Path $labDir -Leaf)\04_writeups\$SampleId.md already exists. Use -Overwrite to replace."
     exit 1
 }
 
@@ -112,8 +131,12 @@ $content = $content.Replace('DATE', $date)
 $content = $content.Replace('TITLE_VAL', $(if ($Title) { $Title } else { '' }))
 $content = $content.Replace('PLATFORM_VAL', $(if ($Platform) { $Platform } else { '' }))
 $content = $content.Replace('KIND_VAL', $Kind)
+if ($Kind -in @('school', 'homelab')) {
+    $content = $content.Replace('engagement_kind: lab', "engagement_kind: $Kind")
+}
 
 New-Item -ItemType Directory -Force -Path $outDir | Out-Null
 $verb = if (Test-Path $outPath) { 'Updated' } else { 'Created' }
 Set-Content -Path $outPath -Value $content -Encoding UTF8
-Write-Host "$verb 04_writeups\$SampleId.md from _templates\$Kind.md" -ForegroundColor Green
+$labLeaf = Split-Path $labDir -Leaf
+Write-Host "$verb $labLeaf\04_writeups\$SampleId.md from _templates\$Kind.md" -ForegroundColor Green
