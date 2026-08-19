@@ -2,8 +2,8 @@
 """
 workflow_gui.py  --  Cross-platform labs engagement assistant.
 
-Malware triage (file) is the primary use case; CTF, lab, and hunt share the same forms.
-Paste values once; phase files are filled automatically (v3.1+: kind-specific UI, Tools tab).
+Work tab is the daily board: pick a lab, open the folder / CAPTURE.md / Notes.
+New Engagement scaffolds a slot. Screenshots, Update, and Tools stay for later.
 
 Usage:
     python workflow_gui.py
@@ -35,8 +35,8 @@ except ImportError:
 # Constants
 # ---------------------------------------------------------------------------
 
-APP_TITLE   = "Workflow HUD -- Labs Engagement Assistant"
-APP_VERSION = "3.1.2"
+APP_TITLE   = "Labs HUD"
+APP_VERSION = "3.2.0"
 CONFIG_FILE = Path(__file__).parent / ".workflow_gui_config.json"
 
 VERDICTS     = ["suspicious", "malicious", "benign", "unknown"]
@@ -108,12 +108,22 @@ C_WARN   = "#f9e2af"
 C_ERR    = "#f38ba8"
 C_WHITE  = "#ffffff"
 C_TEAL   = "#89dceb"
+C_CARD   = "#242438"
 
 MONO_FONT = ("Consolas", 9)       if sys.platform == "win32" else ("DejaVu Sans Mono", 9)
 UI_FONT   = ("Segoe UI", 10)      if sys.platform == "win32" else ("DejaVu Sans", 10)
-HDR_FONT  = ("Segoe UI Semibold", 12) if sys.platform == "win32" else ("DejaVu Sans Bold", 12)
+HDR_FONT  = ("Segoe UI Semibold", 14) if sys.platform == "win32" else ("DejaVu Sans Bold", 14)
 SEC_FONT  = ("Segoe UI Semibold", 9)  if sys.platform == "win32" else ("DejaVu Sans Bold", 9)
 SMALL_FONT = (UI_FONT[0], 8)
+
+PHASE_OPEN = [
+    ("00  receipt / brief", "00_original"),
+    ("01  work log",        "01_static"),
+    ("02  results",         "02_dynamic"),
+    ("03  findings",        "03_findings"),
+    ("Screenshots",         "50_screenshots"),
+    ("Media (local)",       "55_media"),
+]
 
 IMAGE_EXTS = {".png", ".jpg", ".jpeg", ".heic", ".bmp", ".gif", ".webp"}
 
@@ -244,6 +254,73 @@ def phase_file(root: Path, sid: str, phase: str) -> Path:
     if lab:
         return lab / phase / f"{sid}.md"
     return root / phase / f"{sid}.md"
+
+
+def reveal_path(path: Path) -> None:
+    """Open a file or folder with the OS handler (Explorer / default editor)."""
+    p = Path(path)
+    if not p.exists():
+        raise FileNotFoundError(str(p))
+    target = str(p)
+    if sys.platform == "win32":
+        os.startfile(target)
+    elif sys.platform == "darwin":
+        subprocess.Popen(["open", target])
+    else:
+        subprocess.Popen(["xdg-open", target])
+
+
+def list_lab_choices(root: Path) -> list:
+    """Active engagements as {sid, label, folder, kind, status, title, path}."""
+    out = []
+    for row in list_tracker_rows(root):
+        sid = row.get("sample_id", "").strip()
+        if not sid:
+            continue
+        kind = (row.get("engagement_kind") or "file").strip() or "file"
+        status = (row.get("status") or "").strip()
+        title = (row.get("name_tag") or "").strip()
+        lab = find_lab_dir(root, sid)
+        folder = lab.name if lab and lab != root else (row.get("lab_folder") or "").strip()
+        label = folder or sid
+        if title:
+            label = f"{label}  ·  {title}"
+        label = f"{label}  ·  {kind}  ·  {status}"
+        out.append({
+            "sid": sid,
+            "label": label,
+            "folder": folder,
+            "kind": kind,
+            "status": status,
+            "title": title,
+            "path": lab,
+            "notes_course": (row.get("notes_course") or "").strip(),
+            "platform": (row.get("platform") or "").strip(),
+        })
+    return out
+
+
+def notes_root(repo: Path) -> "Path | None":
+    env = os.environ.get("LABS_NOTES_ROOT", "").strip()
+    if env:
+        return Path(env)
+    local = repo / "30_scripts" / "notes_root.local.txt"
+    if local.is_file():
+        first = local.read_text(encoding="utf-8", errors="replace").splitlines()
+        if first and first[0].strip():
+            return Path(first[0].strip())
+    default = Path.home() / "Downloads" / "Notes"
+    if default.is_dir():
+        return default
+    return None
+
+
+def notes_course_dir(repo: Path, course: str) -> "Path | None":
+    root = notes_root(repo)
+    if not root or not (course or "").strip():
+        return None
+    d = root / course.strip()
+    return d if d.is_dir() else None
 
 
 def screenshot_dir(root: Path, sid: str) -> Path:
@@ -454,12 +531,14 @@ class WorkflowApp(tk.Tk):
     def __init__(self, cli_repo: "str | None" = None):
         super().__init__()
         self.title(APP_TITLE)
-        self.geometry("900x780")
-        self.minsize(750, 600)
+        self.geometry("940x700")
+        self.minsize(820, 600)
         self.configure(bg=C_BG)
 
         self.cfg       = load_config()
         self.repo_root = None
+        self._work_choices = []
+        self._work_sid = self.cfg.get("last_work_sid", "")
 
         search_paths = []
         if cli_repo:               search_paths.append(Path(cli_repo))
@@ -507,10 +586,17 @@ class WorkflowApp(tk.Tk):
         s.map("TCombobox", fieldbackground=[("readonly", C_ENTRY)],
               foreground=[("readonly", C_FG)])
         s.configure("TButton", background=C_ACCENT, foreground=C_WHITE,
-                    borderwidth=0, padding=[10, 6], relief="flat")
+                    borderwidth=0, padding=[12, 7], relief="flat")
         s.map("TButton", background=[("active", "#9b8fff"), ("pressed", "#6655cc")])
+        s.configure("Ghost.TButton", background=C_PANEL, foreground=C_FG,
+                    borderwidth=0, padding=[12, 8], relief="flat")
+        s.map("Ghost.TButton",
+              background=[("active", C_ENTRY), ("pressed", C_CARD)])
         s.configure("Warn.TButton", background="#f9e2af", foreground="#1e1e2e")
-        s.configure("Green.TButton", background="#a6e3a1", foreground="#1e1e2e")
+        s.configure("Green.TButton", background="#a6e3a1", foreground="#1e1e2e",
+                    padding=[12, 8])
+        s.configure("Chip.TLabel", background=C_PANEL, foreground=C_TEAL,
+                    font=SEC_FONT, padding=[10, 4])
         s.configure("TSeparator", background=C_PANEL)
         s.configure("TScrollbar", background=C_PANEL, troughcolor=C_BG,
                     arrowcolor=C_DIM, borderwidth=0)
@@ -527,32 +613,252 @@ class WorkflowApp(tk.Tk):
 
     def _build_ui(self):
         hdr = ttk.Frame(self)
-        hdr.pack(fill="x", padx=14, pady=(10, 0))
+        hdr.pack(fill="x", padx=16, pady=(12, 0))
         ttk.Label(hdr, text=APP_TITLE, font=HDR_FONT).pack(side="left")
         ttk.Label(hdr, text=f"v{APP_VERSION}",
-                  style="Dim.TLabel").pack(side="left", padx=(8, 0), pady=(2, 0))
+                  style="Dim.TLabel").pack(side="left", padx=(8, 0), pady=(4, 0))
+        ttk.Button(hdr, text="Open session", style="Green.TButton",
+                   command=self._work_open_session).pack(side="right")
+        self._now_chip = ttk.Label(hdr, text="No lab selected", style="Chip.TLabel")
+        self._now_chip.pack(side="right", padx=(0, 8))
 
         rbar = ttk.Frame(self)
-        rbar.pack(fill="x", padx=14, pady=(4, 2))
+        rbar.pack(fill="x", padx=16, pady=(6, 2))
         ttk.Label(rbar, text="Repo:", style="Dim.TLabel").pack(side="left")
         self._repo_lbl = ttk.Label(rbar, text="(searching...)", style="Dim.TLabel")
         self._repo_lbl.pack(side="left", padx=(6, 10))
-        ttk.Button(rbar, text="Browse...", command=self._browse_repo).pack(side="left")
+        ttk.Button(rbar, text="Browse...", style="Ghost.TButton",
+                   command=self._browse_repo).pack(side="left")
 
-        ttk.Separator(self, orient="horizontal").pack(fill="x", padx=14, pady=4)
+        ttk.Separator(self, orient="horizontal").pack(fill="x", padx=16, pady=6)
 
         self._nb = ttk.Notebook(self)
-        self._nb.pack(fill="both", expand=True, padx=14, pady=(0, 4))
+        self._nb.pack(fill="both", expand=True, padx=16, pady=(0, 4))
 
+        self._build_work_tab()
         self._build_new_engagement_tab()
         self._build_screenshots_tab()
         self._build_update_tab()
         self._build_tools_tab()
         self._build_settings_tab()
 
-        self._status_var = tk.StringVar(value="Ready.")
+        self._status_var = tk.StringVar(value="Ready. Pick a lab on Work.")
         ttk.Label(self, textvariable=self._status_var,
-                  style="Dim.TLabel").pack(side="left", padx=14, pady=(0, 8))
+                  style="Dim.TLabel").pack(side="left", padx=16, pady=(0, 10))
+        self._refresh_work_labs()
+
+    # -----------------------------------------------------------------------
+    # Tab: Work (daily board -- no hunting folders)
+    # -----------------------------------------------------------------------
+
+    def _build_work_tab(self):
+        outer = ttk.Frame(self._nb)
+        self._tab_work = outer
+        self._nb.add(outer, text="  Work  ")
+
+        ttk.Label(
+            outer,
+            text="Pick the lab you are in. Buttons open that folder — no searching, no nested sample_XX paths.",
+            style="Dim.TLabel",
+        ).pack(anchor="w", padx=16, pady=(12, 8))
+
+        pick = ttk.Frame(outer)
+        pick.pack(fill="x", padx=16, pady=(0, 8))
+        ttk.Label(pick, text="Now working", font=SEC_FONT).pack(side="left")
+        self._work_label_var = tk.StringVar()
+        self._work_combo = ttk.Combobox(
+            pick, textvariable=self._work_label_var, state="readonly", width=72)
+        self._work_combo.pack(side="left", padx=(10, 8), fill="x", expand=True)
+        self._work_combo.bind("<<ComboboxSelected>>", self._on_work_lab_changed)
+        ttk.Button(pick, text="Refresh", style="Ghost.TButton",
+                   command=self._refresh_work_labs).pack(side="left")
+
+        self._work_meta = ttk.Label(outer, text="", style="Dim.TLabel")
+        self._work_meta.pack(anchor="w", padx=16, pady=(0, 12))
+
+        sess = ttk.Frame(outer)
+        sess.pack(fill="x", padx=16, pady=(0, 14))
+        ttk.Button(sess, text="  Open lab folder  ", style="Green.TButton",
+                   command=self._work_open_folder).pack(side="left", padx=(0, 8))
+        ttk.Button(sess, text="  CAPTURE.md  ",
+                   command=self._work_open_capture).pack(side="left", padx=(0, 8))
+        ttk.Button(sess, text="  Notes  ", style="Ghost.TButton",
+                   command=self._work_open_notes).pack(side="left", padx=(0, 8))
+        ttk.Button(sess, text="  Full session  ",
+                   command=self._work_open_session).pack(side="left")
+
+        ttk.Label(outer, text="PHASE FILES", font=SEC_FONT).pack(anchor="w", padx=16, pady=(4, 6))
+        grid = ttk.Frame(outer)
+        grid.pack(fill="x", padx=16, pady=(0, 16))
+        for i, (label, phase) in enumerate(PHASE_OPEN):
+            r, c = divmod(i, 3)
+            ttk.Button(
+                grid, text=label, style="Ghost.TButton",
+                command=lambda p=phase: self._work_open_phase(p),
+            ).grid(row=r, column=c, sticky="ew", padx=(0, 8), pady=(0, 8))
+        for c in range(3):
+            grid.columnconfigure(c, weight=1)
+
+        jump = ttk.Frame(outer)
+        jump.pack(fill="x", padx=16, pady=(8, 0))
+        ttk.Button(jump, text="  + New engagement  ",
+                   command=lambda: self._nb.select(self._tab_new)).pack(side="left", padx=(0, 8))
+        ttk.Button(jump, text="  Screenshots  ", style="Ghost.TButton",
+                   command=lambda: self._nb.select(self._tab_shots)).pack(side="left", padx=(0, 8))
+        ttk.Button(jump, text="  Update status  ", style="Ghost.TButton",
+                   command=lambda: self._nb.select(self._tab_update)).pack(side="left")
+
+    def _work_current(self):
+        label = self._work_label_var.get()
+        for rec in self._work_choices:
+            if rec["label"] == label:
+                return rec
+        return None
+
+    def _refresh_work_labs(self, select_sid: "str | None" = None):
+        if not hasattr(self, "_work_combo"):
+            return
+        if not self.repo_root:
+            self._work_combo.configure(values=[])
+            self._work_label_var.set("")
+            self._work_meta.configure(text="Set the repo root (Browse) first.")
+            self._now_chip.configure(text="No lab selected")
+            return
+        self._work_choices = list_lab_choices(self.repo_root)
+        labels = [c["label"] for c in self._work_choices]
+        self._work_combo.configure(values=labels)
+        want = select_sid or self._work_sid or self.cfg.get("last_work_sid", "")
+        chosen = None
+        if want:
+            for rec in self._work_choices:
+                if rec["sid"] == want:
+                    chosen = rec
+                    break
+        if chosen is None and self._work_choices:
+            chosen = self._work_choices[-1]
+        if chosen:
+            self._work_label_var.set(chosen["label"])
+        elif labels:
+            self._work_label_var.set(labels[-1])
+        else:
+            self._work_label_var.set("")
+        self._on_work_lab_changed()
+
+    def _on_work_lab_changed(self, event=None):
+        rec = self._work_current()
+        if not rec:
+            self._work_sid = ""
+            self._work_meta.configure(
+                text="No labs yet. Use New Engagement to scaffold a folder.")
+            self._now_chip.configure(text="No lab selected")
+            return
+        self._work_sid = rec["sid"]
+        self.cfg["last_work_sid"] = rec["sid"]
+        save_config(self.cfg)
+        folder = rec["folder"] or rec["sid"]
+        course = rec.get("notes_course") or rec.get("platform") or "—"
+        path = rec["path"]
+        path_s = str(path) if path else "(missing folder)"
+        self._work_meta.configure(
+            text=f"{folder}   ·   {rec['sid']}   ·   {rec['kind']} / {rec['status']}"
+                 f"   ·   Notes: {course}\n{path_s}")
+        self._now_chip.configure(text=folder)
+        if hasattr(self, "_shot_slot_var"):
+            self._shot_slot_var.set(rec["sid"])
+        if hasattr(self, "_tools_ctx_sid"):
+            self._tools_ctx_sid.set(rec["sid"])
+        if hasattr(self, "_up") and "id" in self._up:
+            self._up["id"].set(rec["sid"])
+
+    def _work_need(self):
+        rec = self._work_current()
+        if not rec:
+            messagebox.showinfo("Work", "Pick a lab first (or create one on New).")
+            return None
+        if not rec.get("path") or not Path(rec["path"]).is_dir():
+            messagebox.showwarning(
+                "Missing folder",
+                f"No LAB folder for {rec['sid']}. Scaffold it from New Engagement.")
+            return None
+        return rec
+
+    def _work_open_folder(self):
+        rec = self._work_need()
+        if not rec:
+            return
+        try:
+            reveal_path(rec["path"])
+            self._log(f"Opened {rec['path'].name}")
+        except Exception as exc:
+            messagebox.showerror("Open failed", str(exc))
+
+    def _work_open_capture(self):
+        rec = self._work_need()
+        if not rec:
+            return
+        cap = Path(rec["path"]) / "CAPTURE.md"
+        try:
+            if cap.exists():
+                reveal_path(cap)
+            else:
+                reveal_path(rec["path"])
+            self._log(f"CAPTURE — {rec['sid']}")
+        except Exception as exc:
+            messagebox.showerror("Open failed", str(exc))
+
+    def _work_open_notes(self):
+        rec = self._work_need()
+        if not rec:
+            return
+        course = rec.get("notes_course") or rec.get("platform") or ""
+        ndir = notes_course_dir(self.repo_root, course) if self.repo_root else None
+        if not ndir:
+            messagebox.showinfo(
+                "Notes",
+                "No Notes course linked.\n"
+                "Run:  30_scripts\\link_notes.ps1 -SampleId N -Course \"CS50\"")
+            return
+        try:
+            reveal_path(ndir)
+            self._log(f"Notes — {ndir.name}")
+        except Exception as exc:
+            messagebox.showerror("Open failed", str(exc))
+
+    def _work_open_session(self):
+        rec = self._work_need()
+        if not rec:
+            return
+        script = self.repo_root / "30_scripts" / "open_session.ps1"
+        if sys.platform == "win32" and script.exists():
+            try:
+                subprocess.Popen(
+                    ["powershell", "-ExecutionPolicy", "Bypass",
+                     "-File", str(script), "-SampleId", rec["sid"]],
+                    cwd=str(self.repo_root))
+                self._log(f"Session — {rec['folder'] or rec['sid']}")
+                return
+            except Exception as exc:
+                self._log(f"open_session.ps1 failed: {exc}")
+        self._work_open_folder()
+        self._work_open_capture()
+        self._work_open_notes()
+
+    def _work_open_phase(self, phase: str):
+        rec = self._work_need()
+        if not rec:
+            return
+        lab = Path(rec["path"])
+        folder = lab / phase
+        md = folder / f"{rec['sid']}.md"
+        target = md if md.exists() else folder
+        if not target.exists():
+            messagebox.showinfo("Missing", f"{phase} is not in {lab.name} yet.")
+            return
+        try:
+            reveal_path(target)
+            self._log(f"Opened {phase}")
+        except Exception as exc:
+            messagebox.showerror("Open failed", str(exc))
 
     # -----------------------------------------------------------------------
     # Tab: New Engagement
@@ -560,8 +866,16 @@ class WorkflowApp(tk.Tk):
 
     def _build_new_engagement_tab(self):
         outer = ttk.Frame(self._nb)
-        self._nb.add(outer, text="  New Engagement  ")
-        _, frame = _scrollable_frame(outer)
+        self._tab_new = outer
+        self._nb.add(outer, text="  New  ")
+        ttk.Label(
+            outer,
+            text="Scaffold a new slot. Create stays pinned at the bottom — then Work opens the folder.",
+            style="Dim.TLabel",
+        ).pack(anchor="w", padx=14, pady=(10, 4))
+        body = ttk.Frame(outer)
+        body.pack(fill="both", expand=True)
+        _, frame = _scrollable_frame(body)
         frame.columnconfigure(1, weight=1)
 
         self._ns = {}
@@ -825,15 +1139,15 @@ class WorkflowApp(tk.Tk):
         _hint(frame, "Replaces file-shaped 04 with kind template (ctf/lab/hunt/file)", R)
         R += 1
 
-        # ---- Action ----
-        _section_label(frame, "", R); R += 2
-        bf = ttk.Frame(frame)
-        bf.grid(row=R, column=0, columnspan=3, pady=(8, 20))
+        foot = ttk.Frame(outer)
+        foot.pack(fill="x", padx=14, pady=(6, 10))
         self._ns["_create_btn"] = ttk.Button(
-            bf, text="   CREATE ENGAGEMENT   ", command=self._on_create_sample)
-        self._ns["_create_btn"].pack(side="left", padx=6)
-        ttk.Button(bf, text="  Clear Form  ",
-                   command=self._clear_ns_form).pack(side="left", padx=6)
+            foot, text="   CREATE ENGAGEMENT   ", command=self._on_create_sample)
+        self._ns["_create_btn"].pack(side="left", padx=(0, 8))
+        ttk.Button(foot, text="  Clear Form  ", style="Ghost.TButton",
+                   command=self._clear_ns_form).pack(side="left")
+        ttk.Button(foot, text="  Back to Work  ", style="Ghost.TButton",
+                   command=lambda: self._nb.select(self._tab_work)).pack(side="right")
 
         # Initial show/hide pass
         self._on_kind_change()
@@ -844,6 +1158,7 @@ class WorkflowApp(tk.Tk):
 
     def _build_screenshots_tab(self):
         outer = ttk.Frame(self._nb)
+        self._tab_shots = outer
         self._nb.add(outer, text="  Screenshots  ")
 
         top = ttk.Frame(outer)
@@ -947,7 +1262,8 @@ class WorkflowApp(tk.Tk):
 
     def _build_update_tab(self):
         outer = ttk.Frame(self._nb)
-        self._nb.add(outer, text="  Update Engagement  ")
+        self._tab_update = outer
+        self._nb.add(outer, text="  Update  ")
 
         frame = ttk.Frame(outer)
         frame.pack(fill="both", expand=True, padx=14, pady=14)
@@ -1072,6 +1388,8 @@ class WorkflowApp(tk.Tk):
         ttk.Label(ctx, text="Context sample ID:", style="Dim.TLabel").pack(side="left")
         self._tools_ctx_sid = tk.StringVar()
         ttk.Entry(ctx, textvariable=self._tools_ctx_sid, width=14).pack(side="left", padx=(4, 8))
+        ttk.Button(ctx, text="From Work tab", style="Ghost.TButton",
+                   command=self._tools_use_work_slot).pack(side="left", padx=(0, 8))
         ttk.Button(ctx, text="From Screenshots tab",
                    command=self._tools_use_shot_slot).pack(side="left", padx=(0, 8))
         ttk.Button(ctx, text="Refresh kind",
@@ -1480,6 +1798,9 @@ class WorkflowApp(tk.Tk):
         self._log(f"Created {sid} (kind={kind}).")
         self._refresh_sample_list()
         self._refresh_shot_slots()
+        self._refresh_work_labs(select_sid=sid)
+        if hasattr(self, "_tab_work"):
+            self._nb.select(self._tab_work)
 
     def _patch_after_create(self, sid: str, kind: str) -> None:
         """Patch 03_findings frontmatter with form values after scaffold."""
@@ -1607,8 +1928,12 @@ class WorkflowApp(tk.Tk):
             return
         ids = list_active_sample_ids(self.repo_root)
         self._shot_slot_combo.configure(values=ids)
-        if ids and not self._shot_slot_var.get():
-            self._shot_slot_var.set(ids[-1])
+        prefer = self._work_sid or self.cfg.get("last_work_sid", "")
+        if ids:
+            if prefer in ids:
+                self._shot_slot_var.set(prefer)
+            elif not self._shot_slot_var.get():
+                self._shot_slot_var.set(ids[-1])
 
     def _shot_add_images(self):
         paths = filedialog.askopenfilenames(
@@ -1934,6 +2259,13 @@ class WorkflowApp(tk.Tk):
         if isinstance(kind, str) and kind not in ("(invalid id)", ""):
             self._tools_apply_kind_visibility(kind)
 
+    def _tools_use_work_slot(self):
+        rec = self._work_current() if hasattr(self, "_work_label_var") else None
+        slot = rec["sid"] if rec else (self._work_sid or "")
+        if slot:
+            self._tools_ctx_sid.set(slot)
+            self._tools_on_ctx_change()
+
     def _tools_use_shot_slot(self):
         slot = self._shot_slot_var.get().strip() if hasattr(self, "_shot_slot_var") else ""
         if slot:
@@ -2079,6 +2411,7 @@ class WorkflowApp(tk.Tk):
         if update_settings and "repo_root" in self._set:
             self._set["repo_root"].set(str(p))
         self._refresh_shot_slots()
+        self._refresh_work_labs()
         self._log(f"Repo root: {p}")
 
     def _save_settings(self):

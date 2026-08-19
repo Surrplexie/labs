@@ -10,6 +10,7 @@
     Outputs:
       dist\workflow_gui.exe    -- standalone executable
       dist\SHA256SUMS.txt      -- SHA-256 checksum for verification
+      %USERPROFILE%\Downloads\workflow_gui-vX.Y.Z.zip  -- exe + checksum (unless -SkipZip)
 
     The checksum file lets you (or a release consumer) verify the binary
     has not been tampered with:
@@ -28,6 +29,12 @@
 .PARAMETER Clean
     After a successful build, remove dist/_build_tmp and dist/_spec (keeps .exe and SHA256SUMS.txt).
 
+.PARAMETER SkipZip
+    Do not write a zip copy of the exe to Downloads.
+
+.PARAMETER ZipTo
+    Folder for the zip (default: %USERPROFILE%\Downloads).
+
 .PARAMETER SignThumbprint
     Optional SHA-1 certificate thumbprint for Authenticode signing via signtool.exe.
     Falls back to env WORKFLOW_GUI_SIGN_THUMBPRINT when omitted. Skipped if signtool missing.
@@ -38,11 +45,14 @@
     powershell -ExecutionPolicy Bypass -File .\30_scripts\build_exe.ps1 -SkipPipInstall
     powershell -ExecutionPolicy Bypass -File .\30_scripts\build_exe.ps1 -SkipPipInstall -Clean
     powershell -ExecutionPolicy Bypass -File .\30_scripts\build_exe.ps1 -SkipPipInstall -Clean -SignThumbprint ABCD1234...
+    powershell -ExecutionPolicy Bypass -File .\30_scripts\build_exe.ps1 -ZipTo "$env:USERPROFILE\Downloads"
 #>
 param(
     [string]$Python           = 'python',
     [switch]$SkipPipInstall,
     [switch]$Clean,
+    [switch]$SkipZip,
+    [string]$ZipTo            = (Join-Path $env:USERPROFILE 'Downloads'),
     [string]$SignThumbprint   = ''
 )
 
@@ -73,11 +83,21 @@ $SpecDir    = Join-Path $DistDir '_spec'
 $OutputExe  = Join-Path $DistDir 'workflow_gui.exe'
 $SumsFile   = Join-Path $DistDir 'SHA256SUMS.txt'
 
+$appVer = '0.0.0'
+$verLine = Select-String -Path $Script -Pattern 'APP_VERSION\s*=\s*["'']([^"'']+)["'']' | Select-Object -First 1
+if ($verLine -and $verLine.Matches.Count -gt 0) {
+    $appVer = $verLine.Matches[0].Groups[1].Value
+}
+
 Write-Host ""
-Write-Host "=== Workflow GUI -- Windows Build ===" -ForegroundColor Cyan
+Write-Host "=== Labs HUD -- Windows Build ===" -ForegroundColor Cyan
 Write-Host "  Script      : $Script"
+Write-Host "  Version     : $appVer"
 Write-Host "  PyInstaller : $PYINSTALLER_VERSION (pinned)"
 Write-Host "  Output      : $OutputExe"
+if (-not $SkipZip) {
+    Write-Host "  Zip to      : $ZipTo"
+}
 Write-Host ""
 
 # ---------------------------------------------------------------------------
@@ -230,6 +250,38 @@ $exeHash  workflow_gui.exe
                 Write-Host "  Removed: $dir" -ForegroundColor DarkGray
             }
         }
+    }
+
+    if (-not $SkipZip) {
+        if (-not (Test-Path -LiteralPath $ZipTo)) {
+            New-Item -ItemType Directory -Force -Path $ZipTo | Out-Null
+        }
+        $zipName = "workflow_gui-v$appVer.zip"
+        $zipPath = Join-Path $ZipTo $zipName
+        $stage   = Join-Path $DistDir '_zip_stage'
+        if (Test-Path $stage) { Remove-Item $stage -Recurse -Force }
+        New-Item -ItemType Directory -Force -Path $stage | Out-Null
+        Copy-Item $OutputExe (Join-Path $stage 'workflow_gui.exe')
+        Copy-Item $SumsFile  (Join-Path $stage 'SHA256SUMS.txt')
+        $readme = @"
+Labs HUD v$appVer
+=================
+
+Work tab: pick a lab, then Open folder / CAPTURE.md / Notes / Full session.
+Each engagement lives in LAB{NN}_{slug}\ (00_original ... 50_screenshots).
+
+Run:
+  workflow_gui.exe
+  workflow_gui.exe --repo C:\path\to\labs
+
+SHA-256 of workflow_gui.exe is in SHA256SUMS.txt.
+This zip is a local convenience copy. The repo does not commit binaries.
+"@
+        Set-Content -Path (Join-Path $stage 'README.txt') -Value $readme -Encoding UTF8
+        if (Test-Path $zipPath) { Remove-Item $zipPath -Force }
+        Compress-Archive -Path (Join-Path $stage '*') -DestinationPath $zipPath -Force
+        Remove-Item $stage -Recurse -Force -ErrorAction SilentlyContinue
+        Write-Host "  Zip: $zipPath" -ForegroundColor Green
     }
 } else {
     Write-Host "Output file not found after build -- check PyInstaller output above." -ForegroundColor Red

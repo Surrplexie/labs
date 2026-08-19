@@ -7,6 +7,14 @@ Tracks breaking and non-breaking changes to the two machine-readable contracts:
 
 ---
 
+## 2026-08-19 -- Labs HUD 3.2.0 (Work tab)
+
+- **`APP_VERSION` 3.2.0** -- Work tab is the daily board (open lab / CAPTURE / Notes / phases).
+- **`build_exe.ps1`** zips `workflow_gui.exe` + `SHA256SUMS.txt` to `%USERPROFILE%\Downloads\workflow_gui-v3.2.0.zip` unless `-SkipZip`.
+- Per-lab folders (`LAB{NN}_{slug}`) and school/homelab/Notes bridge landed with this GUI rebuild.
+
+---
+
 ## 2026-05-20 -- deferred tier closed (REM-8)
 
 - **`smoke_gui.ps1`** + CI jobs `gui-smoke` / `gui-smoke-linux` in `integrity.yml`.

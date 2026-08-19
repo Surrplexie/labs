@@ -1,8 +1,11 @@
 # Workflow GUI -- usage (Windows and Linux)
 
-**Layout:** each engagement lives in `LAB{NN}_{slug}\`. The GUI source (`workflow_gui.py`)
-resolves those folders. **The currently shipped `.exe` is unchanged** -- until you rebuild,
-run from source for the per-lab layout:
+**Layout:** each engagement lives in `LAB{NN}_{slug}\`. **Labs HUD v3.2.0** opens on the
+**Work** tab: pick the current lab, then one-click the folder, `CAPTURE.md`, Notes, or
+phase files (`00`–`03`, screenshots, media). No hunting across shared root folders.
+
+Rebuild the Windows binary with `build_exe.ps1` (also writes
+`%USERPROFILE%\Downloads\workflow_gui-v3.2.0.zip`). Or run from source:
 
 ```text
 python .\30_scripts\workflow_gui.py
@@ -65,17 +68,18 @@ If any of the above is unacceptable, do not run the GUI or build scripts.
 
 ## What the GUI is for
 
-The Workflow GUI (v3.0+) helps you **fill any engagement kind** (file, CTF, lab, hunt)
-from a single form — no manual file editing for metadata. Key features:
+Labs HUD (v3.2+) is the daily board for this logbook. **Work** is the first tab.
+**New** scaffolds a slot; Screenshots / Update / Tools stay for later.
 
 | Feature | Description |
 |---------|-------------|
-| **New Engagement** | Scaffold + fill all four phase files and frontmatter for any kind |
+| **Work** | Pick a lab by folder name. Open folder, `CAPTURE.md`, Notes, or `00`–`03` / screenshots / media in one click. Header chip + **Open session**. |
+| **New** | Scaffold any kind (`file`, `ctf`, `lab`, `hunt`, `school`, `homelab`). Create stays pinned at the bottom. After create, jumps to Work. |
 | **CTF forms** | Platform, category, difficulty, points, solved flag, public-writeup toggle |
-| **Lab forms** | Course, module, objectives list, objectives-met toggle |
+| **Lab / school forms** | Course, module, objectives list, objectives-met toggle |
 | **Hunt forms** | Hypothesis, data sources, timebox, detections-found toggle |
-| **Screenshots tab** | Browse images, add captions, auto-number as shot_NNN.png, copy to 50_screenshots/slot/, update SHOT_INDEX.txt |
-| **Update Engagement** | Kind-aware status, frontmatter patch -- load existing values, change what changed |
+| **Screenshots tab** | Browse images, add captions, auto-number as shot_NNN.png, copy to `LAB*/50_screenshots/`, update SHOT_INDEX.txt |
+| **Update** | Kind-aware status, frontmatter patch -- load existing values, change what changed |
 | **Tools tab** | Kind-aware: Validate, Export, Redact, EXIF; **file** = Procmon ingest; **hunt** = event ingest + new hunt query scaffold |
 | **Thumbnail preview** | Installed `pillow` enables preview in Screenshots tab |
 
@@ -112,6 +116,7 @@ From the repo root:
 cd C:\path\to\labs
 powershell -ExecutionPolicy Bypass -File .\30_scripts\build_exe.ps1
 .\dist\workflow_gui.exe
+# also: %USERPROFILE%\Downloads\workflow_gui-v3.2.0.zip  (exe + SHA256SUMS)
 ```
 
 Optional explicit repo when launching the built binary:
@@ -136,13 +141,16 @@ Releases, **compare hashes** to published values before running.
 1. Start the GUI (source or `.exe` as above).
 2. If the status line indicates the repo was not found, click **Browse** and select the
    folder that contains `samples_tracker.csv` (the `labs` root).
+3. **Work** lists active labs. Pick one, then **Open lab folder** / **CAPTURE.md** /
+   **Notes** / **Full session**. Phase buttons open `00_original` … `03_findings`
+   (the `.md` if it exists, otherwise the folder).
 
 ### Step 2 -- Settings
 
 Open **Settings**, set **Analyst name**, click **Save Settings**. Settings are stored in
 `30_scripts/.workflow_gui_config.json` on your machine (that file is gitignored).
 
-### Step 3 -- New Engagement tab (example data)
+### Step 3 -- New tab (example data)
 
 Select your **Engagement kind** first -- the form adapts dynamically:
 
@@ -191,15 +199,16 @@ Select your **Engagement kind** first -- the form adapts dynamically:
 
 ### Step 4 -- Create
 
-Click **CREATE ENGAGEMENT** (button label reflects selected kind). The GUI calls
-`new_engagement.ps1` with the appropriate `-Kind` flag and writes:
+Click **CREATE ENGAGEMENT** (pinned at the bottom of New). The GUI calls
+`new_engagement.ps1` with the appropriate `-Kind` flag, then switches to **Work**.
+Writes under `LAB{NN}_{slug}\`:
 
 - `00_original/sample_XX.md`
 - `01_static/sample_XX.md`
 - `02_dynamic/sample_XX.md`
 - `03_findings/sample_XX.md` (with YAML frontmatter, `engagement_kind` set)
-- `50_screenshots/sample_XX/SHOT_INDEX.txt` (if missing)
-- Updates `samples_tracker.csv` with kind, title, and `date_started`
+- `50_screenshots/` (images sit in the lab folder, not `sample_XX/` subfolders)
+- Updates `samples_tracker.csv` with kind, title, `lab_folder`, and `date_started`
 
 Optional: enable **Scaffold 04_writeups long-form template** before creating. That
 passes `-WithLongWriteup` (same as CLI) and writes `04_writeups/sample_XX.md` from
@@ -207,7 +216,7 @@ passes `-WithLongWriteup` (same as CLI) and writes `04_writeups/sample_XX.md` fr
 file-malware outline.
 
 **Slot band hints:** entering a slot number (or **Auto-detect**) sets **Engagement kind**
-from `samples_tracker.csv` (01–30 file, 31–40 ctf, 41–45 lab, 46–50 hunt). If kind
+from `samples_tracker.csv` (01–30 file, 31–40 ctf, 41–45 lab, 46–50 hunt, 51–70 school, 71–85 homelab). If kind
 does not match the band, the GUI warns before scaffolding (you can continue anyway).
 
 Then replace remaining `PENDING` placeholders in the Markdown as you perform real work.
